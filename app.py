@@ -13,12 +13,12 @@ import streamlit as st
 import yfinance as yf
 
 # ==============================================================================
-# 1. CONFIGURATION & DESIGN "MOBILE FINTECH" (CSS)
+# 1. CONFIGURATION & DESIGN SYSTEM "WEALTH PRO" (CSS PREMIUM)
 # ==============================================================================
 
 st.set_page_config(
-    page_title="Mon Simulateur Bourse",
-    page_icon="💎",
+    page_title="Aura Wealth | Simulateur Bourse",
+    page_icon="✨",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -26,142 +26,283 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Adaptation mobile et respiration visuelle */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+
+    /* Fond global profond type Finary / Revolut Ultra */
+    .stApp {
+        background: radial-gradient(circle at 50% 0%, #131C38 0%, #070A14 60%, #05070E 100%) !important;
+        color: #F8FAFC;
+    }
+
+    /* Masquer le header et footer Streamlit par défaut pour un look App Native */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {background: transparent !important;}
+
     .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 3rem !important;
-        max-width: 880px !important;
+        padding-top: 1.2rem !important;
+        padding-bottom: 4rem !important;
+        max-width: 780px !important;
     }
-    /* Grande carte principale (Hero Card style Finary / Revolut) */
-    .hero-card {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid rgba(56, 189, 248, 0.3);
-        border-radius: 18px;
-        padding: 22px 20px;
-        margin-top: 10px;
-        margin-bottom: 16px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-        text-align: center;
+
+    /* En-tête de marque */
+    .brand-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+        padding: 4px 2px;
     }
-    .hero-label {
-        color: #94A3B8;
-        font-size: 0.92rem;
-        font-weight: 500;
+    .brand-title {
+        font-size: 1.35rem;
+        font-weight: 800;
+        background: linear-gradient(90deg, #FFFFFF 0%, #94A3B8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.02em;
+    }
+    .brand-badge {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(168, 85, 247, 0.25) 100%);
+        border: 1px solid rgba(168, 85, 247, 0.45);
+        color: #E9D5FF;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 999px;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
+    }
+
+    /* Carte Hero Principale (Patrimoine Net) */
+    .wealth-hero {
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.72) 0%, rgba(15, 23, 42, 0.88) 100%);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        border-top: 1px solid rgba(56, 189, 248, 0.40);
+        border-radius: 24px;
+        padding: 26px 22px 22px 22px;
+        margin-top: 12px;
+        margin-bottom: 16px;
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.65), 0 0 30px -10px rgba(56, 189, 248, 0.15);
+    }
+    .wealth-eyebrow {
+        color: #94A3B8;
+        font-size: 0.80rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
         margin-bottom: 6px;
     }
-    .hero-value {
-        color: #F8FAFC;
-        font-size: 2.5rem;
+    .wealth-amount {
+        font-size: 2.85rem;
         font-weight: 800;
-        line-height: 1.15;
-        margin-bottom: 10px;
+        color: #FFFFFF;
+        letter-spacing: -0.03em;
+        line-height: 1.08;
+        margin-bottom: 14px;
     }
-    .hero-badge-pos {
-        display: inline-block;
-        background: rgba(16, 185, 129, 0.18);
-        color: #34D399;
+    .wealth-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    .pill-gain {
+        background: rgba(16, 185, 129, 0.16);
         border: 1px solid rgba(16, 185, 129, 0.35);
-        padding: 5px 14px;
+        color: #34D399;
+        font-weight: 700;
+        font-size: 0.88rem;
+        padding: 5px 13px;
         border-radius: 999px;
-        font-size: 0.95rem;
+    }
+    .pill-loss {
+        background: rgba(244, 63, 94, 0.16);
+        border: 1px solid rgba(244, 63, 94, 0.35);
+        color: #FB7185;
+        font-weight: 700;
+        font-size: 0.88rem;
+        padding: 5px 13px;
+        border-radius: 999px;
+    }
+    .pill-xirr {
+        background: rgba(56, 189, 248, 0.14);
+        border: 1px solid rgba(56, 189, 248, 0.30);
+        color: #38BDF8;
+        font-weight: 700;
+        font-size: 0.88rem;
+        padding: 5px 13px;
+        border-radius: 999px;
+    }
+
+    /* Jauge de répartition Capital vs Intérêts Composés */
+    .split-bar-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.78rem;
+        color: #CBD5E1;
+        margin-bottom: 7px;
         font-weight: 600;
     }
-    .hero-badge-neg {
-        display: inline-block;
-        background: rgba(239, 68, 68, 0.18);
-        color: #F87171;
-        border: 1px solid rgba(239, 68, 68, 0.35);
-        padding: 5px 14px;
+    .split-bar-track {
+        width: 100%;
+        height: 10px;
+        background: rgba(148, 163, 184, 0.20);
         border-radius: 999px;
-        font-size: 0.95rem;
-        font-weight: 600;
+        overflow: hidden;
+        display: flex;
     }
-    /* Grille de mini-cartes 2x2 sur mobile */
-    .kpi-grid {
+    .split-bar-capital {
+        background: #64748B;
+        height: 100%;
+    }
+    .split-bar-gains {
+        background: linear-gradient(90deg, #06B6D4 0%, #10B981 100%);
+        height: 100%;
+    }
+
+    /* Grille de 4 cartes Bento */
+    .bento-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
         margin-bottom: 18px;
     }
-    .kpi-box {
-        background: rgba(30, 41, 59, 0.65);
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 14px;
-        padding: 14px 16px;
+    .bento-card {
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 18px;
+        padding: 15px 16px;
     }
-    .kpi-title {
+    .bento-label {
         color: #94A3B8;
-        font-size: 0.80rem;
+        font-size: 0.76rem;
+        font-weight: 600;
         margin-bottom: 4px;
     }
-    .kpi-num {
-        color: #F1F5F9;
+    .bento-val {
+        color: #F8FAFC;
         font-size: 1.25rem;
-        font-weight: 700;
+        font-weight: 800;
+        letter-spacing: -0.02em;
     }
-    .kpi-sub {
-        color: #38BDF8;
-        font-size: 0.78rem;
+    .bento-sub {
+        color: #64748B;
+        font-size: 0.74rem;
         margin-top: 2px;
+        font-weight: 500;
     }
-    /* Boîte de résumé en français clair */
-    .insight-box {
-        background: rgba(14, 165, 233, 0.10);
-        border-left: 4px solid #38BDF8;
-        border-radius: 0 12px 12px 0;
+
+    /* Cartes de classement Podium (Onglet Comparateur) */
+    .podium-card {
+        background: rgba(30, 41, 59, 0.48);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
         padding: 14px 16px;
-        margin-bottom: 20px;
-        font-size: 0.95rem;
-        line-height: 1.5;
-        color: #E2E8F0;
+        margin-bottom: 10px;
     }
-    /* Onglets plus larges et tactiles */
+    .podium-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .podium-name {
+        font-weight: 700;
+        font-size: 0.96rem;
+        color: #F8FAFC;
+    }
+    .podium-final {
+        font-weight: 800;
+        font-size: 1.08rem;
+        color: #34D399;
+    }
+    .podium-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.76rem;
+        color: #94A3B8;
+        margin-top: 6px;
+    }
+
+    /* Conteneur de graphique épuré */
+    .chart-header {
+        margin-top: 6px;
+        margin-bottom: 2px;
+    }
+    .chart-title {
+        font-size: 1.02rem;
+        font-weight: 700;
+        color: #F1F5F9;
+    }
+    .chart-subtitle {
+        font-size: 0.80rem;
+        color: #94A3B8;
+    }
+
+    /* Onglets modernes type Segmented Control iOS */
     .stTabs [data-baseweb="tab-list"] {
         gap: 6px;
+        background-color: rgba(15, 23, 42, 0.75);
+        padding: 6px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
     }
     .stTabs [data-baseweb="tab"] {
-        height: 44px;
+        height: 38px;
         padding-left: 12px;
         padding-right: 12px;
-        border-radius: 10px 10px 0 0;
+        border-radius: 10px;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.84rem;
+        border: none !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background: rgba(56, 189, 248, 0.18) !important;
+        color: #38BDF8 !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Catalogue enrichi avec actions PEA / US populaires et ETFs majeurs
 ASSET_CATALOG: Dict[str, Tuple[str, str, bool]] = {
     "🌍 MSCI World PEA (Amundi CW8)": ("CW8.PA", "EUR", False),
-    "🇺🇸 S&P 500 ETF (SPY - Dividendes inclus)": ("SPY", "USD", False),
-    "💻 Nasdaq 100 ETF (Invesco QQQ)": ("QQQ", "USD", False),
-    "🌍 MSCI World Core (iShares IWDA)": ("IWDA.AS", "EUR", False),
-    "🇫🇷 Schneider Electric (SU.PA - PEA)": ("SU.PA", "EUR", False),
-    "🇫🇷 Air Liquide (AI.PA - PEA)": ("AI.PA", "EUR", False),
-    "🇳🇱 ASML Holding (ASML.AS - PEA)": ("ASML.AS", "EUR", False),
-    "🇫🇷 LVMH (MC.PA - PEA)": ("MC.PA", "EUR", False),
-    "🇺🇸 Nvidia (NVDA - CTO)": ("NVDA", "USD", False),
-    "🇺🇸 Microsoft (MSFT - CTO)": ("MSFT", "USD", False),
+    "🇺🇸 S&P 500 ETF (SPY)": ("SPY", "USD", False),
+    "💻 Nasdaq 100 ETF (QQQ)": ("QQQ", "USD", False),
+    "🇫🇷 Air Liquide (AI.PA)": ("AI.PA", "EUR", False),
+    "🇫🇷 Schneider Electric (SU.PA)": ("SU.PA", "EUR", False),
+    "🇳🇱 ASML Holding (ASML.AS)": ("ASML.AS", "EUR", False),
+    "🇫🇷 LVMH (MC.PA)": ("MC.PA", "EUR", False),
+    "🌍 MSCI World Core (IWDA)": ("IWDA.AS", "EUR", False),
+    "🇺🇸 Nvidia (NVDA)": ("NVDA", "USD", False),
+    "🇺🇸 Microsoft (MSFT)": ("MSFT", "USD", False),
     "🇫🇷 CAC 40 Indice (^FCHI)": ("^FCHI", "EUR", True),
-    "🇪🇺 Euro Stoxx 50 Indice (^STOXX50E)": ("^STOXX50E", "EUR", True),
     "🥇 Or Physique (ETF GLD)": ("GLD", "USD", False),
     "₿ Bitcoin (BTC-USD)": ("BTC-USD", "USD", False),
 }
 
 COLOR_PALETTE: List[str] = [
-    "#38BDF8",
-    "#A855F7",
-    "#10B981",
-    "#F59E0B",
-    "#F43F5E",
-    "#3B82F6",
-    "#EC4899",
-    "#84CC16",
+    "#00F5D4",  # Menthe néon / Turquoise Finary
+    "#38BDF8",  # Bleu ciel lumineux
+    "#A855F7",  # Violet électrique
+    "#F59E0B",  # Or / Ambre
+    "#EC4899",  # Rose vif
+    "#3B82F6",  # Bleu roi
 ]
+
+# Configuration Plotly Mobile : supprime la barre d'outils parasite et verrouille le zoom accidentel au doigt
+PLOTLY_MOBILE_CONFIG = {
+    "displayModeBar": False,
+    "scrollZoom": False,
+    "doubleClick": "reset",
+    "showTips": False,
+}
 
 # ==============================================================================
 # 2. STRUCTURES DE DONNÉES
@@ -638,10 +779,10 @@ def build_annual_summary_table(daily_df: pd.DataFrame) -> pd.DataFrame:
                 "Année": int(yr),
                 "Versé l'année (€)": round(flows, 0),
                 "Cumul Versé (€)": round(cum_i, 0),
-                "Valeur Fin d'Année (€)": round(end_v, 0),
-                "Gain/Perte Annuel (€)": round(gain, 0),
-                "Perf. Annuelle (%)": round((gain / denom * 100.0) if denom > 0 else 0.0, 1),
-                "Plus-Value Latente (€)": round(lat, 0),
+                "Patrimoine Fin d'Année (€)": round(end_v, 0),
+                "Gain/Perte de l'année (€)": round(gain, 0),
+                "Performance (%)": round((gain / denom * 100.0) if denom > 0 else 0.0, 1),
+                "Plus-Value Totale (€)": round(lat, 0),
             }
         )
         prev_val = end_v
@@ -687,58 +828,132 @@ def run_monte_carlo_projection(
 
 
 # ==============================================================================
-# 4. GRAPHIQUES ÉPURÉS POUR MOBILE
+# 4. MOTEUR GRAPHIQUE "APPLE STOCKS / FINARY" (ZÉRO BRUIT VISUEL)
 # ==============================================================================
 
 
-def style_mobile_chart(fig: go.Figure, height: int = 360) -> go.Figure:
+def resample_for_smooth_chart(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Échantillonne intelligemment les séries longues en hebdomadaire pour que les courbes
+    soient ultra-fluides à l'œil nu et instantanées au toucher sur mobile.
+    """
+    if len(df) > 900:
+        return df.resample("W-FRI").last().dropna(how="all")
+    return df
+
+
+def format_fintech_chart(fig: go.Figure, height: int = 330, y_suffix: str = " €") -> go.Figure:
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15, 23, 42, 0.45)",
+        plot_bgcolor="rgba(0,0,0,0)",
         height=height,
-        margin=dict(l=8, r=8, t=28, b=8),
+        margin=dict(l=0, r=6, t=26, b=6),
         hovermode="x unified",
+        hoverlabel=dict(
+            bgcolor="#0F172A",
+            bordercolor="rgba(56, 189, 248, 0.4)",
+            font_size=12,
+            font_family="Plus Jakarta Sans, sans-serif",
+        ),
         legend=dict(
             orientation="h",
             yanchor="bottom",
             y=1.02,
             xanchor="left",
             x=0.0,
-            font=dict(size=11),
+            font=dict(size=11.5, color="#CBD5E1"),
             bgcolor="rgba(0,0,0,0)",
         ),
-        xaxis=dict(showgrid=False, zeroline=False),
-        yaxis=dict(showgrid=True, gridcolor="rgba(148, 163, 184, 0.12)", zeroline=False, tickformat=",.0f"),
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            fixedrange=True,
+            tickfont=dict(color="#64748B", size=11),
+            showspikes=True,
+            spikemode="across",
+            spikesnap="cursor",
+            spikecolor="rgba(148, 163, 184, 0.35)",
+            spikethickness=1,
+            spikedash="dot",
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="rgba(148, 163, 184, 0.08)",
+            zeroline=False,
+            fixedrange=True,
+            side="right",
+            tickformat=",.0f",
+            ticksuffix=y_suffix,
+            tickfont=dict(color="#64748B", size=11),
+        ),
     )
     return fig
 
 
+def add_glow_endpoint(fig: go.Figure, x_val: pd.Timestamp, y_val: float, color: str) -> None:
+    """Ajoute un point lumineux type Apple Stocks à l'extrémité droite de la courbe."""
+    fig.add_trace(
+        go.Scatter(
+            x=[x_val],
+            y=[y_val],
+            mode="markers",
+            marker=dict(
+                size=14,
+                color=color,
+                opacity=0.28,
+            ),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[x_val],
+            y=[y_val],
+            mode="markers",
+            marker=dict(
+                size=7,
+                color=color,
+                line=dict(width=2, color="#FFFFFF"),
+            ),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+
 # ==============================================================================
-# 5. PANNEAU DE CONFIGURATION INTUITIF (SUR LA PAGE PRINCIPALE)
+# 5. PANNEAU DE CONTRÔLE INTUITIF
 # ==============================================================================
 
 
 def render_top_config() -> Tuple[List[Tuple[str, str, str, bool]], Optional[io.BytesIO], SimulationParams]:
-    st.markdown("### 💎 Simulateur d'Investissement Bourse")
+    st.markdown(
+        """
+        <div class="brand-header">
+            <div class="brand-title">✨ Aura Wealth</div>
+            <div class="brand-badge">Pro Edition</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     with st.container(border=True):
-        # 1. Choix rapide des actifs
         selected_labels = st.multiselect(
-            "📌 Choisissez vos actions ou ETFs à simuler :",
+            "📌 Portefeuille à simuler",
             options=list(ASSET_CATALOG.keys()),
             default=[
                 "🌍 MSCI World PEA (Amundi CW8)",
-                "🇫🇷 Air Liquide (AI.PA - PEA)",
-                "🇺🇸 S&P 500 ETF (SPY - Dividendes inclus)",
+                "🇫🇷 Air Liquide (AI.PA)",
+                "🇺🇸 S&P 500 ETF (SPY)",
             ],
         )
 
-        # 2. Montants d'investissement (Côte à côte même sur mobile)
         c1, c2 = st.columns(2)
         with c1:
             initial_capital = st.number_input(
-                "💰 Dépôt initial (Jour 1) en €",
+                "💰 Dépôt initial (€)",
                 min_value=0,
                 max_value=10_000_000,
                 value=2_000,
@@ -746,66 +961,61 @@ def render_top_config() -> Tuple[List[Tuple[str, str, str, bool]], Optional[io.B
             )
         with c2:
             dca_amount = st.number_input(
-                "🔄 Épargne régulière (DCA) en €",
+                "🔄 Épargne mensuelle (€)",
                 min_value=0,
                 max_value=1_000_000,
                 value=300,
                 step=50,
             )
 
-        # 3. Durée et enveloppe fiscale (Boutons rapides)
         c3, c4 = st.columns(2)
         with c3:
             horizon_choice = st.selectbox(
-                "⏳ Durée du test historique",
-                options=["5 dernières années", "10 dernières années", "15 dernières années", "20 dernières années", "Dates personnalisées"],
+                "⏳ Horizon historique",
+                options=["5 ans", "10 ans", "15 ans", "20 ans", "Personnalisé"],
                 index=2,
             )
         with c4:
             tax_choice = st.selectbox(
-                "🏦 Enveloppe Fiscale",
+                "🏦 Fiscalité appliquée",
                 options=[
-                    "PEA (> 5 ans : 17,2 %)",
-                    "Compte-Titres (Flat Tax : 30 %)",
-                    "Brut (0 % d'impôt)",
+                    "PEA (17,2 %)",
+                    "Compte-Titres (30 %)",
+                    "Brut (0 %)",
                 ],
                 index=0,
             )
 
         today = date.today()
-        if horizon_choice == "Dates personnalisées":
+        if horizon_choice == "Personnalisé":
             cd1, cd2 = st.columns(2)
-            start_date = cd1.date_input("Date de début", value=today - timedelta(days=int(12 * 365.25)), min_value=date(1985, 1, 1))
-            end_date = cd2.date_input("Date de fin", value=today)
+            start_date = cd1.date_input(
+                "Début", value=today - timedelta(days=int(12 * 365.25)), min_value=date(1985, 1, 1)
+            )
+            end_date = cd2.date_input("Fin", value=today)
         else:
-            years_map = {
-                "5 dernières années": 5,
-                "10 dernières années": 10,
-                "15 dernières années": 15,
-                "20 dernières années": 20,
-            }
+            years_map = {"5 ans": 5, "10 ans": 10, "15 ans": 15, "20 ans": 20}
             yrs = years_map[horizon_choice]
             start_date = today - timedelta(days=int(yrs * 365.25))
             end_date = today
 
-        # 4. Options avancées repliées pour garder une interface ultra propre
-        with st.expander("⚙️ Plus d'options ( Autres actions Yahoo, Frais, Fréquence, Inflation, CSV )"):
+        with st.expander("⚙️ Personnaliser (Autres actions, Frais, Fréquence, CSV)"):
             custom_tickers_raw = st.text_input(
-                "Ajouter d'autres codes Yahoo Finance (séparés par une virgule)",
+                "Ajouter n'importe quel ticker Yahoo Finance (ex: AAPL, TTE.PA, GOOGL)",
                 value="",
-                placeholder="Ex: AAPL, GOOGL, TTE.PA, BNP.PA",
+                placeholder="Séparez les codes par une virgule",
             )
             ca1, ca2 = st.columns(2)
             with ca1:
-                dca_frequency = st.selectbox("Fréquence des versements", ["Mensuelle", "Hebdomadaire", "Trimestrielle"])
-                fee_pct_input = st.number_input("Frais de courtage par achat (%)", 0.0, 5.0, 0.10, 0.05)
-                inflation_input = st.number_input("Inflation annuelle moyenne (%)", 0.0, 15.0, 2.0, 0.2)
+                dca_frequency = st.selectbox("Fréquence", ["Mensuelle", "Hebdomadaire", "Trimestrielle"])
+                fee_pct_input = st.number_input("Frais de courtage (%)", 0.0, 5.0, 0.10, 0.05)
+                inflation_input = st.number_input("Inflation moyenne (%/an)", 0.0, 15.0, 2.0, 0.2)
             with ca2:
-                dca_day_rule = st.selectbox("Jour du versement", ["1er du mois", "15 du mois", "Dernier jour ouvré"])
-                ter_input = st.number_input("Frais de gestion annuels indiciels (%)", 0.0, 3.0, 0.20, 0.05)
-                convert_usd_to_eur = st.toggle("Convertir les actifs $ en € (EURUSD)", value=True)
+                dca_day_rule = st.selectbox("Jour d'achat", ["1er du mois", "15 du mois", "Dernier jour ouvré"])
+                ter_input = st.number_input("Frais annuels indiciels (%)", 0.0, 3.0, 0.20, 0.05)
+                convert_usd_to_eur = st.toggle("Convertir $ en € (Taux réel)", value=True)
 
-            uploaded_csv = st.file_uploader("Importer un fichier CSV externe (Optionnel)", type=["csv"])
+            uploaded_csv = st.file_uploader("Importer un historique CSV", type=["csv"])
 
     assets_to_fetch: List[Tuple[str, str, str, bool]] = []
     for lbl in selected_labels:
@@ -816,13 +1026,9 @@ def render_top_config() -> Tuple[List[Tuple[str, str, str, bool]], Optional[io.B
         for raw_t in custom_tickers_raw.split(","):
             clean_t = raw_t.strip().upper()
             if clean_t and not any(clean_t == x[1] for x in assets_to_fetch):
-                assets_to_fetch.append((f"Action ({clean_t})", clean_t, "USD", clean_t.startswith("^")))
+                assets_to_fetch.append((f"⭐ {clean_t}", clean_t, "USD", clean_t.startswith("^")))
 
-    tax_map = {
-        "PEA (> 5 ans : 17,2 %)": 0.172,
-        "Compte-Titres (Flat Tax : 30 %)": 0.30,
-        "Brut (0 % d'impôt)": 0.0,
-    }
+    tax_map = {"PEA (17,2 %)": 0.172, "Compte-Titres (30 %)": 0.30, "Brut (0 %)": 0.0}
 
     params = SimulationParams(
         start_date=start_date,
@@ -848,7 +1054,7 @@ def render_top_config() -> Tuple[List[Tuple[str, str, str, bool]], Optional[io.B
 
 
 # ==============================================================================
-# 6. AFFICHAGE PRINCIPAL INTUITIF
+# 6. ORCHESTRATION & EXPÉRIENCE VISUELLE
 # ==============================================================================
 
 
@@ -856,7 +1062,7 @@ def main() -> None:
     assets_to_fetch, uploaded_csv, params = render_top_config()
 
     if not assets_to_fetch and uploaded_csv is None:
-        st.info("👆 Sélectionnez au moins une action ou un ETF ci-dessus pour voir les résultats.")
+        st.info("👆 Sélectionnez au moins un actif ci-dessus pour lancer la simulation.")
         st.stop()
 
     fx_series: Optional[pd.Series] = None
@@ -864,13 +1070,15 @@ def main() -> None:
         fx_series = fetch_eurusd_fx_series(params.start_date, params.end_date)
 
     results: List[AssetBacktestResult] = []
-    with st.spinner("Chargement des cours de bourse en temps réel..."):
+    with st.spinner("Synchronisation des marchés financiers..."):
         if uploaded_csv is not None:
             cs, cc, ce = parse_custom_csv(uploaded_csv, params.start_date, params.end_date)
             if ce:
                 st.error(ce)
             elif cs is not None:
-                results.append(run_asset_backtest(f"CSV ({uploaded_csv.name})", "CSV", cs, cc, False, params, fx_series))
+                results.append(
+                    run_asset_backtest(f"CSV ({uploaded_csv.name})", "CSV", cs, cc, False, params, fx_series)
+                )
 
         for lbl, tck, d_curr, is_b in assets_to_fetch:
             sp, det_c, err = fetch_yahoo_series(tck, params.start_date, params.end_date)
@@ -885,10 +1093,9 @@ def main() -> None:
         st.error("Aucune donnée disponible sur cette période.")
         st.stop()
 
-    # Sélecteur d'actif principal sous forme de pilules cliquables ou menu déroulant
     if len(results) > 1:
         selected_label = st.selectbox(
-            "🔍 Afficher le zoom détaillé pour :",
+            "🎯 Actif affiché au premier plan :",
             options=[r.asset_label for r in results],
             index=0,
         )
@@ -899,235 +1106,436 @@ def main() -> None:
     m_dca = primary_res.dca_metrics
     m_ls = primary_res.lump_sum_metrics
     df = primary_res.daily_df
+    plot_df = resample_for_smooth_chart(df)
 
-    # --- 1. HERO CARD (LE RÉSULTAT EN UN COUP D'ŒIL) ---
-    badge_class = "hero-badge-pos" if m_dca.net_pnl >= 0 else "hero-badge-neg"
+    # Calcul de la répartition Capital vs Gains pour la jauge visuelle
+    cap_share_pct = (
+        min(100.0, max(5.0, (m_dca.total_invested / m_dca.final_net_value) * 100.0))
+        if m_dca.final_net_value > m_dca.total_invested
+        else 100.0
+    )
+    gains_share_pct = max(0.0, 100.0 - cap_share_pct)
+    pill_class = "pill-gain" if m_dca.net_pnl >= 0 else "pill-loss"
     multiplier = m_dca.final_net_value / m_dca.total_invested if m_dca.total_invested > 0 else 1.0
 
+    # --- 1. HERO CARD PREMIUM AVEC JAUGE CAPITAL / INTÉRÊTS ---
     st.markdown(
         f"""
-        <div class="hero-card">
-            <div class="hero-label">Capital Final Net en poche ({primary_res.asset_label})</div>
-            <div class="hero-value">{m_dca.final_net_value:,.0f} €</div>
-            <div class="{badge_class}">
-                {m_dca.net_pnl:+,.0f} € de gain net ({m_dca.net_return_pct * 100:+.1f} % | x{multiplier:.2f})
+        <div class="wealth-hero">
+            <div class="wealth-eyebrow">Patrimoine Net Final • {primary_res.asset_label}</div>
+            <div class="wealth-amount">{m_dca.final_net_value:,.0f} €</div>
+            <div class="wealth-pills">
+                <span class="{pill_class}">{m_dca.net_pnl:+,.0f} € ({m_dca.net_return_pct * 100:+.1f} %)</span>
+                <span class="pill-xirr">⚡ {m_dca.xirr * 100:.2f} % / an net</span>
+                <span class="pill-xirr">✖️ {multiplier:.2f}x votre mise</span>
+            </div>
+            <div class="split-bar-labels">
+                <span>💳 Vos versements : {m_dca.total_invested:,.0f} € ({cap_share_pct:.0f}%)</span>
+                <span style="color:#34D399;">✨ Intérêts nets : {max(0.0, m_dca.net_pnl):,.0f} € ({gains_share_pct:.0f}%)</span>
+            </div>
+            <div class="split-bar-track">
+                <div class="split-bar-capital" style="width: {cap_share_pct:.1f}%;"></div>
+                <div class="split-bar-gains" style="width: {gains_share_pct:.1f}%;"></div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # --- 2. GRILLE 2x2 ULTRA LISIBLE SUR MOBILE ---
+    # --- 2. BENTO GRID 2x2 ---
     st.markdown(
         f"""
-        <div class="kpi-grid">
-            <div class="kpi-box">
-                <div class="kpi-title">💰 Total sorti de votre poche</div>
-                <div class="kpi-num">{m_dca.total_invested:,.0f} €</div>
-                <div class="kpi-sub">{m_dca.num_orders} versements effectués</div>
+        <div class="bento-grid">
+            <div class="bento-card">
+                <div class="bento-label">Pouvoir d'achat réel</div>
+                <div class="bento-val">{m_dca.final_real_net_value:,.0f} €</div>
+                <div class="bento-sub">Inflation {params.inflation_rate * 100:.1f}%/an déduite</div>
             </div>
-            <div class="kpi-box">
-                <div class="kpi-title">🚀 Rendement Annuel Réel (TRI)</div>
-                <div class="kpi-num">{m_dca.xirr * 100:.2f} % / an</div>
-                <div class="kpi-sub">Net de frais et d'impôts</div>
+            <div class="bento-card">
+                <div class="bento-label">Valeur avant impôts</div>
+                <div class="bento-val">{m_dca.final_gross_value:,.0f} €</div>
+                <div class="bento-sub">Fiscalité : -{m_dca.tax_paid:,.0f} € ({params.tax_regime_name})</div>
             </div>
-            <div class="kpi-box">
-                <div class="kpi-title">🛒 Pouvoir d'achat réel (Inflation déduite)</div>
-                <div class="kpi-num">{m_dca.final_real_net_value:,.0f} €</div>
-                <div class="kpi-sub">En euros constants d'aujourd'hui</div>
+            <div class="bento-card">
+                <div class="bento-label">Prix d'achat moyen (PRU)</div>
+                <div class="bento-val">{m_dca.final_pru:,.1f} €</div>
+                <div class="bento-sub">Cours actuel : {m_dca.final_market_price:,.1f} €</div>
             </div>
-            <div class="kpi-box">
-                <div class="kpi-title">📉 Pire baisse traversée (Krach)</div>
-                <div class="kpi-num" style="color:#F87171;">{m_dca.max_drawdown * 100:.1f} %</div>
-                <div class="kpi-sub">Depuis le plus haut atteint</div>
+            <div class="bento-card">
+                <div class="bento-label">Plus forte secousse</div>
+                <div class="bento-val" style="color:#FB7185;">{m_dca.max_drawdown * 100:.1f} %</div>
+                <div class="bento-sub">Baisse max traversée</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # --- 3. PHRASE D'EXPLICATION EN FRANÇAIS CLAIR ---
-    start_str = df.index[0].strftime("%m/%Y")
-    end_str = df.index[-1].strftime("%m/%Y")
-    st.markdown(
-        f"""
-        <div class="insight-box">
-            💡 <b>En clair :</b> En démarrant avec <b>{params.initial_capital:,.0f} €</b> en {start_str} puis en ajoutant
-            <b>{params.dca_amount:,.0f} €</b> ({params.dca_frequency.lower()}), vous avez versé au total <b>{m_dca.total_invested:,.0f} €</b>.
-            Les intérêts composés ont généré <b>{m_dca.gross_pnl:+,.0f} €</b> de gains bruts (soit <b>{m_dca.net_pnl:+,.0f} €</b> nets après fiscalité {params.tax_regime_name.split('(')[0]}).
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # --- 4. ONGLETS SIMPLIFIÉS ---
+    # --- 3. BARRE DE NAVIGATION PAR ONGLETS ---
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            "📈 Évolution",
-            "⚔️ Comparateur",
-            "🔮 Futur (+10/20 ans)",
-            "📅 Bilans & Détails",
+            "📈 Trajectoire",
+            "🏆 Podium & Duel",
+            "🔮 Futur",
+            "📊 Bilans",
         ]
     )
 
-    # ONGLET 1 : COURBE PRINCIPALE
+    # ==========================================================================
+    # ONGLET 1 : TRAJECTOIRE ÉPURÉE (STYLE FINARY / APPLE STOCKS)
+    # ==========================================================================
     with tab1:
+        col_hdr, col_tog = st.columns([2, 1])
+        with col_hdr:
+            st.markdown(
+                """
+                <div class="chart-header">
+                    <div class="chart-title">Croissance de votre patrimoine</div>
+                    <div class="chart-subtitle">Survolez la courbe avec le doigt pour explorer chaque date</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col_tog:
+            show_inflation_line = st.toggle("Afficher l'inflation", value=False)
+
         fig1 = go.Figure()
+
+        # Zone grise discrète pour le cumul des versements
         fig1.add_trace(
             go.Scatter(
-                x=df.index,
-                y=df["Cum_Invested"],
-                name="Argent versé",
-                line=dict(color="#94A3B8", width=2, shape="hv"),
+                x=plot_df.index,
+                y=plot_df["Cum_Invested"],
+                name="Total versé",
+                mode="lines",
+                line=dict(color="rgba(148, 163, 184, 0.55)", width=1.8, dash="dot"),
+                hovertemplate="<b>Versé :</b> %{y:,.0f} €<extra></extra>",
+            )
+        )
+
+        # Courbe principale lumineuse avec dégradé doux
+        fig1.add_trace(
+            go.Scatter(
+                x=plot_df.index,
+                y=plot_df["Portfolio_Gross_Value"],
+                name="Votre Patrimoine",
+                mode="lines",
+                line=dict(color="#00F5D4", width=3.2, shape="spline", smoothing=0.6),
                 fill="tozeroy",
-                fillcolor="rgba(148, 163, 184, 0.15)",
-                hovertemplate="%{y:,.0f} €<extra>Argent versé</extra>",
+                fillcolor="rgba(0, 245, 212, 0.10)",
+                hovertemplate="<b>Patrimoine :</b> %{y:,.0f} €<extra></extra>",
             )
         )
-        fig1.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["Portfolio_Gross_Value"],
-                name="Valeur du portefeuille",
-                line=dict(color="#38BDF8", width=3),
-                fill="tonexty",
-                fillcolor="rgba(56, 189, 248, 0.15)",
-                hovertemplate="%{y:,.0f} €<extra>Portefeuille</extra>",
-            )
-        )
-        fig1.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["Portfolio_Real_Gross_Value"],
-                name="Valeur hors inflation",
-                line=dict(color="#F59E0B", width=2, dash="dot"),
-                hovertemplate="%{y:,.0f} €<extra>Hors inflation</extra>",
-            )
-        )
-        st.plotly_chart(style_mobile_chart(fig1, height=370), use_container_width=True)
 
-        with st.expander("🔍 Voir l'évolution de votre Prix d'Achat Moyen (PRU) et des Krachs"):
-            st.caption("Lorsque la courbe verte (Prix du marché) passe au-dessus de la courbe orange (votre prix d'achat moyen), vous êtes en plus-value.")
-            fig_pru = go.Figure()
-            fig_pru.add_trace(go.Scatter(x=df.index, y=df["Market_Price"], name="Prix de l'action/ETF", line=dict(color="#10B981", width=2.2)))
-            fig_pru.add_trace(go.Scatter(x=df.index, y=df["PRU"], name="Votre Prix Moyen (PRU)", line=dict(color="#F59E0B", width=2.5)))
-            st.plotly_chart(style_mobile_chart(fig_pru, height=300), use_container_width=True)
-
-            st.caption("Graphique des baisses (Drawdown) : montre de combien % votre portefeuille a reculé lors des crises avant de rebondir.")
-            fig_dd = go.Figure()
-            fig_dd.add_trace(
+        if show_inflation_line:
+            fig1.add_trace(
                 go.Scatter(
-                    x=df.index,
-                    y=df["Drawdown_DCA"] * 100,
-                    name="Baisse depuis le record (%)",
-                    line=dict(color="#F43F5E", width=2),
-                    fill="tozeroy",
-                    fillcolor="rgba(244, 63, 94, 0.2)",
+                    x=plot_df.index,
+                    y=plot_df["Portfolio_Real_Gross_Value"],
+                    name="Pouvoir d'achat réel",
+                    mode="lines",
+                    line=dict(color="#F59E0B", width=2.0, shape="spline"),
+                    hovertemplate="<b>Hors inflation :</b> %{y:,.0f} €<extra></extra>",
                 )
             )
-            st.plotly_chart(style_mobile_chart(fig_dd, height=260), use_container_width=True)
 
-    # ONGLET 2 : COMPARATEUR MULTI-ACTIFS & DCA VS LUMP SUM
-    with tab2:
-        st.markdown("##### 🏆 Classement des actifs sélectionnés (pour le même effort d'épargne)")
-        fig_comp = go.Figure()
-        fig_comp.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["Cum_Invested"],
-                name="Total versé",
-                line=dict(color="#64748B", width=2, dash="dash", shape="hv"),
-            )
+        add_glow_endpoint(
+            fig1,
+            plot_df.index[-1],
+            float(plot_df["Portfolio_Gross_Value"].iloc[-1]),
+            "#00F5D4",
         )
-        for idx, r in enumerate(results):
+
+        st.plotly_chart(
+            format_fintech_chart(fig1, height=340),
+            use_container_width=True,
+            config=PLOTLY_MOBILE_CONFIG,
+        )
+
+        with st.expander("🔍 Comprendre comment vos achats réguliers lissent le prix (PRU)"):
+            st.caption(
+                "La ligne dorée représente votre **prix d'achat moyen**. Tant que la courbe bleue du marché est au-dessus, vous gagnez de l'argent."
+            )
+            fig_pru = go.Figure()
+            fig_pru.add_trace(
+                go.Scatter(
+                    x=plot_df.index,
+                    y=plot_df["PRU"],
+                    name="Votre Prix Moyen (PRU)",
+                    line=dict(color="#F59E0B", width=2.4),
+                    hovertemplate="<b>Votre PRU :</b> %{y:,.1f} €<extra></extra>",
+                )
+            )
+            fig_pru.add_trace(
+                go.Scatter(
+                    x=plot_df.index,
+                    y=plot_df["Market_Price"],
+                    name="Cours de Bourse",
+                    line=dict(color="#38BDF8", width=2.4, shape="spline"),
+                    fill="tonexty",
+                    fillcolor="rgba(56, 189, 248, 0.10)",
+                    hovertemplate="<b>Cours :</b> %{y:,.1f} €<extra></extra>",
+                )
+            )
+            st.plotly_chart(
+                format_fintech_chart(fig_pru, height=280),
+                use_container_width=True,
+                config=PLOTLY_MOBILE_CONFIG,
+            )
+
+    # ==========================================================================
+    # ONGLET 2 : PODIUM MULTI-ACTIFS & DUEL DCA VS LUMP SUM
+    # ==========================================================================
+    with tab2:
+        st.markdown(
+            """
+            <div class="chart-header">
+                <div class="chart-title">🏆 Podium de vos investissements</div>
+                <div class="chart-subtitle">Comparaison nette d'impôts pour exactement le même effort d'épargne</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        ranked_results = sorted(results, key=lambda x: x.dca_metrics.final_net_value, reverse=True)
+        max_final_val = max(r.dca_metrics.final_net_value for r in ranked_results)
+
+        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣"]
+        for idx, r in enumerate(ranked_results):
+            dm = r.dca_metrics
+            medal = medals[idx] if idx < len(medals) else "•"
+            bar_w = (dm.final_net_value / max_final_val) * 100.0 if max_final_val > 0 else 50.0
+            color = COLOR_PALETTE[idx % len(COLOR_PALETTE)]
+
+            st.markdown(
+                f"""
+                <div class="podium-card">
+                    <div class="podium-top">
+                        <div class="podium-name">{medal} {r.asset_label}</div>
+                        <div class="podium-final">{dm.final_net_value:,.0f} €</div>
+                    </div>
+                    <div class="split-bar-track" style="height:7px;">
+                        <div style="width:{bar_w:.1f}%; background:{color}; height:100%; border-radius:999px;"></div>
+                    </div>
+                    <div class="podium-meta">
+                        <span>Gain net : <b style="color:#E2E8F0;">{dm.net_pnl:+,.0f} €</b></span>
+                        <span>Rendement : <b style="color:#38BDF8;">{dm.xirr * 100:.2f} %/an</b></span>
+                        <span>Max Krach : <b style="color:#FB7185;">{dm.max_drawdown * 100:.1f} %</b></span>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        fig_comp = go.Figure()
+        for idx, r in enumerate(ranked_results):
+            r_plot = resample_for_smooth_chart(r.daily_df)
+            color = COLOR_PALETTE[idx % len(COLOR_PALETTE)]
             fig_comp.add_trace(
                 go.Scatter(
-                    x=r.daily_df.index,
-                    y=r.daily_df["Portfolio_Gross_Value"],
-                    name=f"{r.asset_label.split('(')[0].strip()}",
-                    line=dict(color=COLOR_PALETTE[idx % len(COLOR_PALETTE)], width=2.6),
+                    x=r_plot.index,
+                    y=r_plot["Portfolio_Gross_Value"],
+                    name=r.asset_label.split("(")[0].strip(),
+                    line=dict(color=color, width=2.6, shape="spline"),
+                    hovertemplate="%{y:,.0f} €<extra>" + r.asset_label.split("(")[0].strip() + "</extra>",
                 )
             )
-        st.plotly_chart(style_mobile_chart(fig_comp, height=370), use_container_width=True)
-
-        comp_table = [
-            {
-                "Actif": r.asset_label,
-                "Argent Versé": f"{r.dca_metrics.total_invested:,.0f} €",
-                "Capital Final Net": f"{r.dca_metrics.final_net_value:,.0f} €",
-                "Gain Net": f"{r.dca_metrics.net_pnl:+,.0f} €",
-                "Rendement / an": f"{r.dca_metrics.xirr * 100:.2f} %",
-                "Pire Baisse": f"{r.dca_metrics.max_drawdown * 100:.1f} %",
-            }
-            for r in sorted(results, key=lambda x: x.dca_metrics.final_net_value, reverse=True)
-        ]
-        st.dataframe(pd.DataFrame(comp_table), use_container_width=True, hide_index=True)
+        st.plotly_chart(
+            format_fintech_chart(fig_comp, height=320),
+            use_container_width=True,
+            config=PLOTLY_MOBILE_CONFIG,
+        )
 
         st.divider()
-        st.markdown(f"##### 🥊 Et si vous aviez tout investi le 1er jour ? (DCA vs Lump Sum sur {primary_res.asset_label})")
-        st.caption(
-            f"Compare votre épargne progressive (DCA) avec le fait d'investir la totalité des **{m_dca.total_invested:,.0f} €** dès le Jour 1."
+        st.markdown(
+            f"""
+            <div class="chart-header">
+                <div class="chart-title">🥊 Épargne mensuelle (DCA) vs Tout mettre le 1er jour</div>
+                <div class="chart-subtitle">Simulation sur {primary_res.asset_label} avec {m_dca.total_invested:,.0f} € mobilisés</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        col_ls1, col_ls2 = st.columns(2)
-        col_ls1.metric("Avec Épargne Progressive (DCA)", f"{m_dca.final_net_value:,.0f} €", f"Pire baisse : {m_dca.max_drawdown * 100:.1f} %", delta_color="off")
-        col_ls2.metric("En mettant tout au Jour 1 (Lump Sum)", f"{m_ls.final_net_value:,.0f} €", f"Pire baisse : {m_ls.max_drawdown * 100:.1f} %", delta_color="off")
+
+        c_ls1, c_ls2 = st.columns(2)
+        c_ls1.metric(
+            "Épargne Progressive (DCA)",
+            f"{m_dca.final_net_value:,.0f} €",
+            f"Krach max : {m_dca.max_drawdown * 100:.1f} %",
+            delta_color="off",
+        )
+        c_ls2.metric(
+            "Tout au Jour 1 (Lump Sum)",
+            f"{m_ls.final_net_value:,.0f} €",
+            f"Krach max : {m_ls.max_drawdown * 100:.1f} %",
+            delta_color="off",
+        )
 
         fig_ls = go.Figure()
-        fig_ls.add_trace(go.Scatter(x=df.index, y=df["Portfolio_Gross_Value"], name="Épargne progressive (DCA)", line=dict(color="#38BDF8", width=2.8)))
-        fig_ls.add_trace(go.Scatter(x=df.index, y=df["LumpSum_Gross_Value"], name="Tout au Jour 1 (Lump Sum)", line=dict(color="#A855F7", width=2.5)))
-        st.plotly_chart(style_mobile_chart(fig_ls, height=320), use_container_width=True)
+        fig_ls.add_trace(
+            go.Scatter(
+                x=plot_df.index,
+                y=plot_df["Portfolio_Gross_Value"],
+                name="Épargne Progressive (DCA)",
+                line=dict(color="#00F5D4", width=3.0, shape="spline"),
+                hovertemplate="<b>DCA :</b> %{y:,.0f} €<extra></extra>",
+            )
+        )
+        fig_ls.add_trace(
+            go.Scatter(
+                x=plot_df.index,
+                y=plot_df["LumpSum_Gross_Value"],
+                name="Tout au Jour 1",
+                line=dict(color="#A855F7", width=2.4, shape="spline"),
+                hovertemplate="<b>Jour 1 :</b> %{y:,.0f} €<extra></extra>",
+            )
+        )
+        st.plotly_chart(
+            format_fintech_chart(fig_ls, height=300),
+            use_container_width=True,
+            config=PLOTLY_MOBILE_CONFIG,
+        )
 
-    # ONGLET 3 : PROJECTION DANS LE FUTUR (MONTE CARLO)
+    # ==========================================================================
+    # ONGLET 3 : PROJECTION PROBABILISTE DANS LE FUTUR
+    # ==========================================================================
     with tab3:
-        st.markdown(f"##### 🔮 Combien aurez-vous demain en continuant sur {primary_res.asset_label} ?")
-        st.caption("Simulation de 500 scénarios futurs basés sur le rythme historique de cet actif en poursuivant votre épargne.")
-        hz = st.slider("Choisissez le nombre d'années supplémentaires :", min_value=3, max_value=30, value=10)
+        st.markdown(
+            f"""
+            <div class="chart-header">
+                <div class="chart-title">🔮 Simulateur d'avenir ({primary_res.asset_label})</div>
+                <div class="chart-subtitle">Basé sur 500 trajectoires statistiques en poursuivant vos {params.dca_amount:,.0f} €/{params.dca_frequency.lower()}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        hz = st.slider("Projetez votre patrimoine dans :", min_value=3, max_value=25, value=10, format="%d ans")
         mc_df = run_monte_carlo_projection(primary_res, params, hz)
 
-        mc1, mc2, mc3 = st.columns(3)
-        mc1.metric("Scénario Prudent", f"{mc_df['P10'].iloc[-1]:,.0f} €", "Marché difficile", delta_color="off")
-        mc2.metric("Scénario Médian", f"{mc_df['P50'].iloc[-1]:,.0f} €", f"Dans +{hz} ans", delta_color="normal")
-        mc3.metric("Scénario Optimiste", f"{mc_df['P90'].iloc[-1]:,.0f} €", "Marché porteur", delta_color="normal")
+        st.markdown(
+            f"""
+            <div class="bento-grid" style="grid-template-columns: repeat(3, 1fr); margin-top:8px;">
+                <div class="bento-card">
+                    <div class="bento-label">Scénario Prudent</div>
+                    <div class="bento-val" style="font-size:1.1rem; color:#CBD5E1;">{mc_df['P10'].iloc[-1]:,.0f} €</div>
+                    <div class="bento-sub">Marché lent</div>
+                </div>
+                <div class="bento-card" style="border-color:rgba(0, 245, 212, 0.4);">
+                    <div class="bento-label" style="color:#00F5D4;">Scénario Central</div>
+                    <div class="bento-val" style="font-size:1.15rem; color:#00F5D4;">{mc_df['P50'].iloc[-1]:,.0f} €</div>
+                    <div class="bento-sub">Dans +{hz} ans</div>
+                </div>
+                <div class="bento-card">
+                    <div class="bento-label">Scénario Porteur</div>
+                    <div class="bento-val" style="font-size:1.1rem; color:#34D399;">{mc_df['P90'].iloc[-1]:,.0f} €</div>
+                    <div class="bento-sub">Marché haussier</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         fig_mc = go.Figure()
-        fig_mc.add_trace(go.Scatter(x=mc_df.index, y=mc_df["P90"], name="Scénario Optimiste", line=dict(color="#10B981", width=1.5)))
+        fig_mc.add_trace(
+            go.Scatter(
+                x=mc_df.index,
+                y=mc_df["P90"],
+                name="Marché Porteur",
+                line=dict(color="rgba(16, 185, 129, 0.4)", width=1.2, shape="spline"),
+                hovertemplate="<b>Porteur :</b> %{y:,.0f} €<extra></extra>",
+            )
+        )
         fig_mc.add_trace(
             go.Scatter(
                 x=mc_df.index,
                 y=mc_df["P10"],
-                name="Scénario Prudent",
-                line=dict(color="#F43F5E", width=1.5),
+                name="Marché Prudent",
+                line=dict(color="rgba(244, 63, 94, 0.4)", width=1.2, shape="spline"),
                 fill="tonexty",
-                fillcolor="rgba(56, 189, 248, 0.12)",
+                fillcolor="rgba(0, 245, 212, 0.10)",
+                hovertemplate="<b>Prudent :</b> %{y:,.0f} €<extra></extra>",
             )
         )
-        fig_mc.add_trace(go.Scatter(x=mc_df.index, y=mc_df["P50"], name="Trajectoire Centrale", line=dict(color="#38BDF8", width=3)))
-        fig_mc.add_trace(go.Scatter(x=mc_df.index, y=mc_df["Cum_Invested"], name="Total versé", line=dict(color="#94A3B8", width=2, dash="dash")))
-        st.plotly_chart(style_mobile_chart(fig_mc, height=350), use_container_width=True)
+        fig_mc.add_trace(
+            go.Scatter(
+                x=mc_df.index,
+                y=mc_df["P50"],
+                name="Trajectoire Centrale",
+                line=dict(color="#00F5D4", width=3.2, shape="spline"),
+                hovertemplate="<b>Central :</b> %{y:,.0f} €<extra></extra>",
+            )
+        )
+        fig_mc.add_trace(
+            go.Scatter(
+                x=mc_df.index,
+                y=mc_df["Cum_Invested"],
+                name="Cumul versé",
+                line=dict(color="rgba(148, 163, 184, 0.55)", width=1.8, dash="dot"),
+                hovertemplate="<b>Versé :</b> %{y:,.0f} €<extra></extra>",
+            )
+        )
+        add_glow_endpoint(fig_mc, mc_df.index[-1], float(mc_df["P50"].iloc[-1]), "#00F5D4")
+        st.plotly_chart(
+            format_fintech_chart(fig_mc, height=330),
+            use_container_width=True,
+            config=PLOTLY_MOBILE_CONFIG,
+        )
 
-    # ONGLET 4 : BILAN ANNÉE PAR ANNÉE & STATISTIQUES EXPERTES
+    # ==========================================================================
+    # ONGLET 4 : BILAN ANNUEL VISUEL & EXPORT
+    # ==========================================================================
     with tab4:
-        st.markdown("##### 📅 Récapitulatif Année par Année")
         ann_df = build_annual_summary_table(df)
+
+        st.markdown(
+            """
+            <div class="chart-header">
+                <div class="chart-title">📊 Gains et pertes année par année</div>
+                <div class="chart-subtitle">Visualisez les bonnes et mauvaises années boursières en un clin d'œil</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        bar_colors = [
+            "#10B981" if v >= 0 else "#F43F5E" for v in ann_df["Gain/Perte de l'année (€)"]
+        ]
+        fig_bars = go.Figure(
+            go.Bar(
+                x=ann_df["Année"].astype(str),
+                y=ann_df["Gain/Perte de l'année (€)"],
+                marker_color=bar_colors,
+                marker_line_width=0,
+                hovertemplate="<b>Année %{x} :</b> %{y:+,.0f} €<extra></extra>",
+            )
+        )
+        st.plotly_chart(
+            format_fintech_chart(fig_bars, height=250),
+            use_container_width=True,
+            config=PLOTLY_MOBILE_CONFIG,
+        )
+
+        st.markdown("##### 📋 Détail chiffré par année")
         st.dataframe(ann_df, use_container_width=True, hide_index=True)
 
-        with st.expander("🤓 Statistiques Quantitatives Expertes (Sharpe, Sortino, Volatilité)"):
+        with st.expander("🤓 Indicateurs Mathématiques Avancés (Sharpe, Sortino, Volatilité)"):
             s1, s2, s3, s4 = st.columns(4)
-            s1.metric("Volatilité Annuelle", f"{m_dca.annualized_volatility * 100:.2f} %")
+            s1.metric("Volatilité Annuelle", f"{m_dca.annualized_volatility * 100:.1f} %")
             s2.metric("Ratio de Sharpe", f"{m_dca.sharpe_ratio:.2f}")
             s3.metric("Ratio de Sortino", f"{m_dca.sortino_ratio:.2f}")
-            s4.metric("Frais de courtage cumulés", f"{m_dca.total_brokerage_fees:,.0f} €")
+            s4.metric("Frais cumulés", f"{m_dca.total_brokerage_fees:,.0f} €")
 
         ce1, ce2 = st.columns(2)
         ce1.download_button(
-            "📥 Télécharger l'historique complet (CSV)",
+            "📥 Exporter l'historique (CSV)",
             df.to_csv(index=True).encode("utf-8"),
-            f"portefeuille_{primary_res.ticker}.csv",
+            f"aura_wealth_{primary_res.ticker}.csv",
             "text/csv",
             use_container_width=True,
         )
         ce2.download_button(
-            "📥 Télécharger le bilan annuel (CSV)",
+            "📥 Exporter le bilan annuel (CSV)",
             ann_df.to_csv(index=False).encode("utf-8"),
             f"bilan_annuel_{primary_res.ticker}.csv",
             "text/csv",
