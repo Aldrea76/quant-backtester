@@ -8,74 +8,163 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from scipy import optimize
 import streamlit as st
 import yfinance as yf
 
 # ==============================================================================
-# 1. CONFIGURATION DE LA PAGE & CONSTANTES GLOBALES
+# 1. CONFIGURATION & DESIGN "MOBILE FINTECH" (CSS)
 # ==============================================================================
 
 st.set_page_config(
-    page_title="QuantBacktester Pro | DCA vs Lump Sum",
-    page_icon="📈",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    page_title="Mon Simulateur Bourse",
+    page_icon="💎",
+    layout="centered",
+    initial_sidebar_state="collapsed",
 )
 
 st.markdown(
     """
     <style>
-    div[data-testid="metric-container"] {
-        background-color: rgba(28, 31, 48, 0.65);
-        border: 1px solid rgba(128, 128, 128, 0.25);
-        padding: 14px 18px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    /* Adaptation mobile et respiration visuelle */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 3rem !important;
+        max-width: 880px !important;
     }
-    .stTabs [data-baseweb="tab-list"] {
+    /* Grande carte principale (Hero Card style Finary / Revolut) */
+    .hero-card {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 18px;
+        padding: 22px 20px;
+        margin-top: 10px;
+        margin-bottom: 16px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+        text-align: center;
+    }
+    .hero-label {
+        color: #94A3B8;
+        font-size: 0.92rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 6px;
+    }
+    .hero-value {
+        color: #F8FAFC;
+        font-size: 2.5rem;
+        font-weight: 800;
+        line-height: 1.15;
+        margin-bottom: 10px;
+    }
+    .hero-badge-pos {
+        display: inline-block;
+        background: rgba(16, 185, 129, 0.18);
+        color: #34D399;
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        padding: 5px 14px;
+        border-radius: 999px;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    .hero-badge-neg {
+        display: inline-block;
+        background: rgba(239, 68, 68, 0.18);
+        color: #F87171;
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        padding: 5px 14px;
+        border-radius: 999px;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    /* Grille de mini-cartes 2x2 sur mobile */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
         gap: 12px;
+        margin-bottom: 18px;
+    }
+    .kpi-box {
+        background: rgba(30, 41, 59, 0.65);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 14px;
+        padding: 14px 16px;
+    }
+    .kpi-title {
+        color: #94A3B8;
+        font-size: 0.80rem;
+        margin-bottom: 4px;
+    }
+    .kpi-num {
+        color: #F1F5F9;
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+    .kpi-sub {
+        color: #38BDF8;
+        font-size: 0.78rem;
+        margin-top: 2px;
+    }
+    /* Boîte de résumé en français clair */
+    .insight-box {
+        background: rgba(14, 165, 233, 0.10);
+        border-left: 4px solid #38BDF8;
+        border-radius: 0 12px 12px 0;
+        padding: 14px 16px;
+        margin-bottom: 20px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: #E2E8F0;
+    }
+    /* Onglets plus larges et tactiles */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 46px;
-        padding-left: 18px;
-        padding-right: 18px;
-        border-radius: 6px 6px 0px 0px;
+        height: 44px;
+        padding-left: 12px;
+        padding-right: 12px;
+        border-radius: 10px 10px 0 0;
         font-weight: 600;
+        font-size: 0.9rem;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-PRECONFIGURED_ASSETS: Dict[str, Tuple[str, str, bool]] = {
-    "S&P 500 - Indice Nu (^GSPC)": ("^GSPC", "USD", True),
-    "S&P 500 - ETF SPY (Total Return / Div. Réinvestis)": ("SPY", "USD", False),
-    "Nasdaq 100 - Indice Nu (^NDX)": ("^NDX", "USD", True),
-    "Nasdaq 100 - ETF Invesco QQQ": ("QQQ", "USD", False),
-    "MSCI World - iShares Core (IWDA.AS - EUR)": ("IWDA.AS", "EUR", False),
-    "MSCI World - iShares ETF (URTH - USD)": ("URTH", "USD", False),
-    "Amundi MSCI World PEA (CW8.PA - EUR)": ("CW8.PA", "EUR", False),
-    "Euro Stoxx 50 - Indice (^STOXX50E)": ("^STOXX50E", "EUR", True),
-    "CAC 40 - Indice (^FCHI)": ("^FCHI", "EUR", True),
-    "Or Physique - SPDR Gold Shares (GLD)": ("GLD", "USD", False),
-    "Bitcoin (BTC-USD)": ("BTC-USD", "USD", False),
+# Catalogue enrichi avec actions PEA / US populaires et ETFs majeurs
+ASSET_CATALOG: Dict[str, Tuple[str, str, bool]] = {
+    "🌍 MSCI World PEA (Amundi CW8)": ("CW8.PA", "EUR", False),
+    "🇺🇸 S&P 500 ETF (SPY - Dividendes inclus)": ("SPY", "USD", False),
+    "💻 Nasdaq 100 ETF (Invesco QQQ)": ("QQQ", "USD", False),
+    "🌍 MSCI World Core (iShares IWDA)": ("IWDA.AS", "EUR", False),
+    "🇫🇷 Schneider Electric (SU.PA - PEA)": ("SU.PA", "EUR", False),
+    "🇫🇷 Air Liquide (AI.PA - PEA)": ("AI.PA", "EUR", False),
+    "🇳🇱 ASML Holding (ASML.AS - PEA)": ("ASML.AS", "EUR", False),
+    "🇫🇷 LVMH (MC.PA - PEA)": ("MC.PA", "EUR", False),
+    "🇺🇸 Nvidia (NVDA - CTO)": ("NVDA", "USD", False),
+    "🇺🇸 Microsoft (MSFT - CTO)": ("MSFT", "USD", False),
+    "🇫🇷 CAC 40 Indice (^FCHI)": ("^FCHI", "EUR", True),
+    "🇪🇺 Euro Stoxx 50 Indice (^STOXX50E)": ("^STOXX50E", "EUR", True),
+    "🥇 Or Physique (ETF GLD)": ("GLD", "USD", False),
+    "₿ Bitcoin (BTC-USD)": ("BTC-USD", "USD", False),
 }
 
 COLOR_PALETTE: List[str] = [
-    "#00D4FF",
-    "#FF6B6B",
+    "#38BDF8",
+    "#A855F7",
     "#10B981",
     "#F59E0B",
-    "#A855F7",
-    "#EC4899",
+    "#F43F5E",
     "#3B82F6",
+    "#EC4899",
     "#84CC16",
 ]
 
 # ==============================================================================
-# 2. STRUCTURES DE DONNÉES (DATACLASSES)
+# 2. STRUCTURES DE DONNÉES
 # ==============================================================================
 
 
@@ -138,50 +227,36 @@ class AssetBacktestResult:
 
 
 # ==============================================================================
-# 3. COUCHE D'ACQUISITION & PRÉTRAITEMENT DES DONNÉES
+# 3. ACQUISITION DES DONNÉES & MOTEUR QUANTITATIF
 # ==============================================================================
 
 
 def _extract_price_series(raw_df: pd.DataFrame, ticker: str) -> pd.Series:
     if raw_df is None or raw_df.empty:
         return pd.Series(dtype=float)
-
     df = raw_df.copy()
-
     if isinstance(df.columns, pd.MultiIndex):
-        level_0 = df.columns.get_level_values(0).unique().tolist()
-        level_1 = df.columns.get_level_values(1).unique().tolist()
-
+        l0 = df.columns.get_level_values(0).unique().tolist()
+        l1 = df.columns.get_level_values(1).unique().tolist()
         for col_choice in ["Adj Close", "Close"]:
-            if col_choice in level_0:
+            if col_choice in l0:
                 sub = df[col_choice]
                 if isinstance(sub, pd.DataFrame):
-                    if ticker in sub.columns:
-                        return sub[ticker].astype(float)
-                    return sub.iloc[:, 0].astype(float)
+                    return (sub[ticker] if ticker in sub.columns else sub.iloc[:, 0]).astype(float)
                 return sub.astype(float)
-            if col_choice in level_1:
+            if col_choice in l1:
                 sub = df.xs(col_choice, axis=1, level=1)
                 if isinstance(sub, pd.DataFrame):
-                    if ticker in sub.columns:
-                        return sub[ticker].astype(float)
-                    return sub.iloc[:, 0].astype(float)
+                    return (sub[ticker] if ticker in sub.columns else sub.iloc[:, 0]).astype(float)
                 return sub.astype(float)
-
         return df.iloc[:, 0].astype(float)
 
     for col in ["Adj Close", "Close", "adj close", "close"]:
         if col in df.columns:
-            series = df[col]
-            if isinstance(series, pd.DataFrame):
-                series = series.iloc[:, 0]
-            return series.astype(float)
-
+            s = df[col]
+            return (s.iloc[:, 0] if isinstance(s, pd.DataFrame) else s).astype(float)
     num_cols = df.select_dtypes(include=[np.number]).columns
-    if len(num_cols) > 0:
-        return df[num_cols[0]].astype(float)
-
-    return pd.Series(dtype=float)
+    return df[num_cols[0]].astype(float) if len(num_cols) > 0 else pd.Series(dtype=float)
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -191,7 +266,6 @@ def fetch_yahoo_series(
     try:
         dl_start = (pd.Timestamp(start_date) - pd.Timedelta(days=7)).strftime("%Y-%m-%d")
         dl_end = (pd.Timestamp(end_date) + pd.Timedelta(days=2)).strftime("%Y-%m-%d")
-
         raw = yf.download(
             tickers=ticker,
             start=dl_start,
@@ -200,61 +274,41 @@ def fetch_yahoo_series(
             progress=False,
             threads=False,
         )
-
         if raw is None or raw.empty:
-            return None, "USD", f"Aucune donnée renvoyée par Yahoo Finance pour '{ticker}'."
-
+            return None, "USD", f"Aucune donnée trouvée pour '{ticker}'."
         series = _extract_price_series(raw, ticker).dropna()
         if series.empty:
-            return None, "USD", f"Série de prix vide après nettoyage pour '{ticker}'."
-
+            return None, "USD", f"Série de prix vide pour '{ticker}'."
         series.index = pd.to_datetime(series.index).tz_localize(None).normalize()
         series = series[~series.index.duplicated(keep="last")].sort_index()
 
-        currency = "USD"
         upper_t = ticker.upper()
-        if upper_t.endswith((".PA", ".AS", ".DE", ".MI", ".MC", ".BR")) or upper_t in [
-            "^STOXX50E",
-            "^FCHI",
-            "^GDAXI",
-        ]:
-            currency = "EUR"
-        else:
-            try:
-                t_obj = yf.Ticker(ticker)
-                fast_info = getattr(t_obj, "fast_info", None)
-                if fast_info and "currency" in fast_info and fast_info["currency"]:
-                    currency = str(fast_info["currency"]).upper()
-            except Exception:
-                pass
+        currency = (
+            "EUR"
+            if upper_t.endswith((".PA", ".AS", ".DE", ".MI", ".MC", ".BR"))
+            or upper_t in ["^STOXX50E", "^FCHI", "^GDAXI"]
+            else "USD"
+        )
+        eff_start = max(pd.Timestamp(start_date), series.index.min())
+        eff_end = min(pd.Timestamp(end_date), series.index.max())
+        if eff_start >= eff_end:
+            return None, currency, f"Pas de cotation sur cette période pour '{ticker}'."
 
-        effective_start = max(pd.Timestamp(start_date), series.index.min())
-        effective_end = min(pd.Timestamp(end_date), series.index.max())
-
-        if effective_start >= effective_end:
-            return (
-                None,
-                currency,
-                f"La plage de dates demandée ne contient pas de données cotées pour '{ticker}'.",
-            )
-
-        full_calendar = pd.date_range(start=effective_start, end=effective_end, freq="D")
-        series = series.reindex(full_calendar.union(series.index)).sort_index()
-        series = series.ffill().bfill().reindex(full_calendar)
-
+        cal = pd.date_range(start=eff_start, end=eff_end, freq="D")
+        series = series.reindex(cal.union(series.index)).sort_index().ffill().bfill().reindex(cal)
         return series, currency, None
-
     except Exception as exc:
-        return None, "USD", f"Erreur réseau/API sur '{ticker}' : {str(exc)}"
+        return None, "USD", f"Erreur réseau sur '{ticker}' : {str(exc)}"
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_eurusd_fx_series(start_date: date, end_date: date) -> pd.Series:
-    fx_series, _, err = fetch_yahoo_series("EURUSD=X", start_date, end_date)
-    if fx_series is None or fx_series.empty or err is not None:
-        idx = pd.date_range(start=pd.Timestamp(start_date), end=pd.Timestamp(end_date), freq="D")
-        return pd.Series(1.10, index=idx, name="EURUSD")
-    return fx_series
+    fx, _, err = fetch_yahoo_series("EURUSD=X", start_date, end_date)
+    if fx is None or fx.empty or err is not None:
+        return pd.Series(
+            1.10, index=pd.date_range(start=pd.Timestamp(start_date), end=pd.Timestamp(end_date), freq="D")
+        )
+    return fx
 
 
 def parse_custom_csv(
@@ -264,80 +318,45 @@ def parse_custom_csv(
         content = uploaded_file.getvalue().decode("utf-8", errors="ignore")
         first_line = content.splitlines()[0] if content else ""
         sep = ";" if ";" in first_line else ("\t" if "\t" in first_line else ",")
-
         df = pd.read_csv(io.StringIO(content), sep=sep)
         if df.empty or len(df.columns) < 2:
-            return None, "EUR", "Le fichier CSV doit contenir au moins une colonne Date et une colonne Prix."
-
-        date_col: Optional[str] = None
-        for col in df.columns:
-            if any(k in str(col).lower() for k in ["date", "time", "jour", "timestamp", "day"]):
-                date_col = col
-                break
-        if date_col is None:
-            date_col = df.columns[0]
-
+            return None, "EUR", "Le CSV doit contenir une colonne Date et une colonne Prix."
+        date_col = next(
+            (c for c in df.columns if any(k in str(c).lower() for k in ["date", "time", "jour", "day"])),
+            df.columns[0],
+        )
         df[date_col] = pd.to_datetime(df[date_col], errors="coerce", utc=True).dt.tz_localize(None).dt.normalize()
         df = df.dropna(subset=[date_col]).sort_values(by=date_col)
-
-        price_col: Optional[str] = None
-        candidate_keywords = ["adj close", "close", "clôture", "cloture", "prix", "price", "valeur", "nav", "vl"]
-        for kw in candidate_keywords:
-            for col in df.columns:
-                if col != date_col and kw in str(col).lower():
-                    price_col = col
-                    break
-            if price_col is not None:
-                break
-
-        if price_col is None:
-            remaining_cols = [c for c in df.columns if c != date_col]
-            price_col = remaining_cols[0]
-
+        kws = ["adj close", "close", "clôture", "cloture", "prix", "price", "valeur", "nav", "vl"]
+        price_col = next(
+            (c for k in kws for c in df.columns if c != date_col and k in str(c).lower()),
+            [c for c in df.columns if c != date_col][0],
+        )
         if df[price_col].dtype == object:
-            cleaned_vals = (
+            df[price_col] = pd.to_numeric(
                 df[price_col]
                 .astype(str)
                 .str.replace(" ", "", regex=False)
-                .str.replace("\u00a0", "", regex=False)
                 .str.replace("€", "", regex=False)
                 .str.replace("$", "", regex=False)
-                .str.replace(",", ".", regex=False)
+                .str.replace(",", ".", regex=False),
+                errors="coerce",
             )
-            df[price_col] = pd.to_numeric(cleaned_vals, errors="coerce")
         else:
             df[price_col] = pd.to_numeric(df[price_col], errors="coerce")
-
         df = df.dropna(subset=[price_col])
         df = df[df[price_col] > 0]
-
         if df.empty:
-            return None, "EUR", "Aucune valeur numérique positive valide trouvée dans la colonne de prix."
-
-        series = pd.Series(df[price_col].values, index=df[date_col])
-        series = series[~series.index.duplicated(keep="last")].sort_index()
-
-        eff_start = max(pd.Timestamp(start_date), series.index.min())
-        eff_end = min(pd.Timestamp(end_date), series.index.max())
-        if eff_start >= eff_end:
-            return (
-                None,
-                "EUR",
-                f"Les dates du CSV ({series.index.min().date()} au {series.index.max().date()}) "
-                f"ne recoupent pas la période sélectionnée.",
-            )
-
-        cal = pd.date_range(start=eff_start, end=eff_end, freq="D")
-        series = series.reindex(cal.union(series.index)).sort_index().ffill().bfill().reindex(cal)
-        return series, "EUR", None
-
+            return None, "EUR", "Aucun prix valide trouvé dans le CSV."
+        s = pd.Series(df[price_col].values, index=df[date_col])
+        s = s[~s.index.duplicated(keep="last")].sort_index()
+        eff_s, eff_e = max(pd.Timestamp(start_date), s.index.min()), min(pd.Timestamp(end_date), s.index.max())
+        if eff_s >= eff_e:
+            return None, "EUR", "Les dates du CSV ne recoupent pas la période choisie."
+        cal = pd.date_range(start=eff_s, end=eff_e, freq="D")
+        return s.reindex(cal.union(s.index)).sort_index().ffill().bfill().reindex(cal), "EUR", None
     except Exception as exc:
-        return None, "EUR", f"Erreur lors de la lecture du CSV : {str(exc)}"
-
-
-# ==============================================================================
-# 4. MOTEUR QUANTITATIF (CALENDRIER DCA, XIRR, BACKTEST VECTORISÉ)
-# ==============================================================================
+        return None, "EUR", f"Erreur lecture CSV : {str(exc)}"
 
 
 def generate_dca_schedule(
@@ -345,85 +364,67 @@ def generate_dca_schedule(
 ) -> pd.DatetimeIndex:
     if calendar_index.empty:
         return pd.DatetimeIndex([])
-
-    start_ts = calendar_index.min()
-    end_ts = calendar_index.max()
-
+    start_ts, end_ts = calendar_index.min(), calendar_index.max()
     if frequency == "Hebdomadaire":
-        target_dates = calendar_index[calendar_index.weekday == 0]
-        return target_dates[target_dates > start_ts]
+        t = calendar_index[calendar_index.weekday == 0]
+        return t[t > start_ts]
 
-    months_df = pd.DataFrame({"date": calendar_index})
-    months_df["year"] = months_df["date"].dt.year
-    months_df["month"] = months_df["date"].dt.month
-    months_df["is_bday"] = months_df["date"].dt.weekday < 5
-
-    ym_groups = months_df.groupby(["year", "month"], as_index=False)
-    selected_dates: List[pd.Timestamp] = []
-
+    mdf = pd.DataFrame(
+        {
+            "date": calendar_index,
+            "y": calendar_index.year,
+            "m": calendar_index.month,
+            "b": calendar_index.weekday < 5,
+        }
+    )
+    ym = mdf.groupby(["y", "m"], as_index=False)
     step = 1 if frequency == "Mensuelle" else 3
-    group_keys = list(ym_groups.groups.keys())
-
-    for idx_g, (yr, mo) in enumerate(group_keys):
+    selected: List[pd.Timestamp] = []
+    for idx_g, k in enumerate(list(ym.groups.keys())):
         if idx_g % step != 0:
             continue
-
-        sub = ym_groups.get_group((yr, mo))
-        bdays = sub[sub["is_bday"]]["date"]
-        if bdays.empty:
-            bdays = sub["date"]
-
+        sub = ym.get_group(k)
+        bdays = sub[sub["b"]]["date"] if not sub[sub["b"]].empty else sub["date"]
         if day_rule == "1er du mois":
-            chosen = bdays.iloc[0]
+            ch = bdays.iloc[0]
         elif day_rule == "15 du mois":
-            on_or_after_15 = bdays[bdays.dt.day >= 15]
-            chosen = on_or_after_15.iloc[0] if not on_or_after_15.empty else bdays.iloc[-1]
+            c15 = bdays[bdays.dt.day >= 15]
+            ch = c15.iloc[0] if not c15.empty else bdays.iloc[-1]
         else:
-            chosen = bdays.iloc[-1]
-
-        if start_ts < chosen <= end_ts:
-            selected_dates.append(chosen)
-
-    return pd.DatetimeIndex(sorted(set(selected_dates)))
+            ch = bdays.iloc[-1]
+        if start_ts < ch <= end_ts:
+            selected.append(ch)
+    return pd.DatetimeIndex(sorted(set(selected)))
 
 
 def compute_xirr(cashflows: List[Tuple[pd.Timestamp, float]]) -> float:
     if not cashflows or len(cashflows) < 2:
         return 0.0
-
     dates = np.array([cf[0] for cf in cashflows])
     amounts = np.array([cf[1] for cf in cashflows], dtype=np.float64)
-
     if not (np.any(amounts < 0) and np.any(amounts > 0)):
         return 0.0
-
     t0 = dates[0]
-    years_frac = np.array([(d - t0).days / 365.25 for d in dates], dtype=np.float64)
+    yf_arr = np.array([(d - t0).days / 365.25 for d in dates], dtype=np.float64)
 
-    def npv(rate: float) -> float:
-        if rate <= -0.9999:
-            return 1e18
-        return float(np.sum(amounts / np.power(1.0 + rate, years_frac)))
+    def npv(r: float) -> float:
+        return 1e18 if r <= -0.9999 else float(np.sum(amounts / np.power(1.0 + r, yf_arr)))
 
-    def npv_prime(rate: float) -> float:
-        if rate <= -0.9999:
-            return -1e18
-        return float(np.sum(-years_frac * amounts / np.power(1.0 + rate, years_frac + 1.0)))
+    def npv_p(r: float) -> float:
+        return -1e18 if r <= -0.9999 else float(np.sum(-yf_arr * amounts / np.power(1.0 + r, yf_arr + 1.0)))
 
     try:
-        root = optimize.newton(func=npv, x0=0.08, fprime=npv_prime, tol=1e-7, maxiter=150)
-        if np.isfinite(root) and -0.999 < root < 100.0 and abs(npv(root)) < 1e-2:
-            return float(root)
+        rt = optimize.newton(func=npv, x0=0.08, fprime=npv_p, tol=1e-7, maxiter=150)
+        if np.isfinite(rt) and -0.999 < rt < 100.0 and abs(npv(rt)) < 1e-2:
+            return float(rt)
     except Exception:
         pass
-
     try:
-        root_brent = optimize.brentq(npv, -0.995, 50.0, xtol=1e-7, maxiter=300)
-        if np.isfinite(root_brent):
-            return float(root_brent)
+        rt_b = optimize.brentq(npv, -0.995, 50.0, xtol=1e-7, maxiter=300)
+        if np.isfinite(rt_b):
+            return float(rt_b)
     except Exception:
         pass
-
     return 0.0
 
 
@@ -431,27 +432,24 @@ def compute_order_fee(gross_amount: float, params: SimulationParams) -> float:
     if gross_amount <= 0.0:
         return 0.0
     if params.fee_mode == "Pourcentage (%)":
-        computed = gross_amount * params.fee_pct
-        fee = max(computed, params.fee_min_eur) if params.fee_pct > 0 or params.fee_min_eur > 0 else 0.0
+        fee = (
+            max(gross_amount * params.fee_pct, params.fee_min_eur)
+            if (params.fee_pct > 0 or params.fee_min_eur > 0)
+            else 0.0
+        )
     else:
         fee = params.fee_fixed_eur
     return min(fee, gross_amount * 0.99)
 
 
 def compute_underwater_metrics(wealth_series: pd.Series) -> Tuple[pd.Series, float, int]:
-    running_max = wealth_series.cummax()
-    drawdown_series = (wealth_series / running_max) - 1.0
-    max_dd = float(drawdown_series.min()) if not drawdown_series.empty else 0.0
-
-    is_underwater = drawdown_series < -1e-9
-    if not is_underwater.any():
-        return drawdown_series, 0.0, 0
-
-    ath_reached_groups = (~is_underwater).cumsum()
-    underwater_streaks = is_underwater.groupby(ath_reached_groups).sum()
-    max_underwater_days = int(underwater_streaks.max()) if not underwater_streaks.empty else 0
-
-    return drawdown_series, max_dd, max_underwater_days
+    dd = (wealth_series / wealth_series.cummax()) - 1.0
+    max_dd = float(dd.min()) if not dd.empty else 0.0
+    is_uw = dd < -1e-9
+    if not is_uw.any():
+        return dd, 0.0, 0
+    streaks = is_uw.groupby((~is_uw).cumsum()).sum()
+    return dd, max_dd, (int(streaks.max()) if not streaks.empty else 0)
 
 
 def run_asset_backtest(
@@ -464,842 +462,367 @@ def run_asset_backtest(
     fx_eurusd_series: Optional[pd.Series] = None,
 ) -> AssetBacktestResult:
     prices = raw_price_series.copy().sort_index()
-    effective_currency = native_currency
-
+    eff_curr = native_currency
     if params.convert_usd_to_eur and native_currency == "USD" and fx_eurusd_series is not None:
-        fx_aligned = fx_eurusd_series.reindex(prices.index).ffill().bfill()
-        prices = prices / fx_aligned
-        effective_currency = "EUR"
+        prices = prices / fx_eurusd_series.reindex(prices.index).ffill().bfill()
+        eff_curr = "EUR"
 
-    should_deduct_ter = params.annual_ter > 0 and (is_bare_index or params.apply_ter_to_etfs)
-    n_days = len(prices)
-    days_elapsed = np.arange(n_days, dtype=np.float64)
-
-    if should_deduct_ter:
-        daily_ter_drag = np.power(1.0 - params.annual_ter, days_elapsed / 365.25)
-        adj_prices = prices * daily_ter_drag
-    else:
-        adj_prices = prices.copy()
-
+    days_el = np.arange(len(prices), dtype=np.float64)
+    adj_prices = (
+        prices * np.power(1.0 - params.annual_ter, days_el / 365.25)
+        if (params.annual_ter > 0 and (is_bare_index or params.apply_ter_to_etfs))
+        else prices.copy()
+    )
     dca_dates = generate_dca_schedule(adj_prices.index, params.dca_frequency, params.dca_day_rule)
 
-    gross_contrib_dca = pd.Series(0.0, index=adj_prices.index, dtype=np.float64)
+    gross_dca = pd.Series(0.0, index=adj_prices.index, dtype=np.float64)
     fees_dca = pd.Series(0.0, index=adj_prices.index, dtype=np.float64)
+    d0 = adj_prices.index[0]
 
-    first_day = adj_prices.index[0]
     if params.initial_capital > 0:
-        gross_contrib_dca.loc[first_day] += params.initial_capital
-        fees_dca.loc[first_day] += compute_order_fee(params.initial_capital, params)
-
+        gross_dca.loc[d0] += params.initial_capital
+        fees_dca.loc[d0] += compute_order_fee(params.initial_capital, params)
     if params.dca_amount > 0 and len(dca_dates) > 0:
-        single_dca_fee = compute_order_fee(params.dca_amount, params)
-        gross_contrib_dca.loc[dca_dates] += params.dca_amount
-        fees_dca.loc[dca_dates] += single_dca_fee
+        gross_dca.loc[dca_dates] += params.dca_amount
+        fees_dca.loc[dca_dates] += compute_order_fee(params.dca_amount, params)
+    if gross_dca.sum() == 0.0:
+        gross_dca.loc[d0] = 1000.0
+        fees_dca.loc[d0] = compute_order_fee(1000.0, params)
 
-    if gross_contrib_dca.sum() == 0.0:
-        gross_contrib_dca.loc[first_day] = 1000.0
-        fees_dca.loc[first_day] = compute_order_fee(1000.0, params)
+    net_dca = gross_dca - fees_dca
+    shares_bought = net_dca / adj_prices
+    cum_shares = shares_bought.cumsum()
+    cum_inv = gross_dca.cumsum()
+    cum_fees = fees_dca.cumsum()
+    pru = pd.Series(np.where(cum_shares > 0, cum_inv / cum_shares, np.nan), index=adj_prices.index).ffill().bfill()
+    val_dca = cum_shares * adj_prices
+    infl_def = np.power(1.0 + params.inflation_rate, days_el / 365.25)
+    real_val_dca = val_dca / infl_def
 
-    net_contrib_dca = gross_contrib_dca - fees_dca
+    tot_cap = float(cum_inv.iloc[-1])
+    ls_fee = compute_order_fee(tot_cap, params)
+    ls_shares = (tot_cap - ls_fee) / float(adj_prices.iloc[0])
+    val_ls = adj_prices * ls_shares
+    real_val_ls = val_ls / infl_def
 
-    shares_bought_dca = net_contrib_dca / adj_prices
-    cum_shares_dca = shares_bought_dca.cumsum()
-    cum_gross_invested_dca = gross_contrib_dca.cumsum()
-    cum_fees_dca = fees_dca.cumsum()
+    dd_dca, max_dd_dca, uw_dca = compute_underwater_metrics(val_dca)
+    dd_ls, max_dd_ls, _ = compute_underwater_metrics(val_ls)
+    dd_ass, _, uw_ass = compute_underwater_metrics(adj_prices)
 
-    pru_series = np.where(cum_shares_dca > 0, cum_gross_invested_dca / cum_shares_dca, np.nan)
-    pru_series = pd.Series(pru_series, index=adj_prices.index).ffill().bfill()
+    twr_dca = (((val_dca - net_dca) / val_dca.shift(1)) - 1.0).replace([np.inf, -np.inf], np.nan).dropna()
+    b_rets_ass = adj_prices[adj_prices.index.weekday < 5].pct_change().dropna()
+    b_rets_dca = twr_dca[twr_dca.index.weekday < 5]
+    vol_dca = float(b_rets_dca.std() * np.sqrt(252.0)) if len(b_rets_dca) > 2 else 0.0
+    vol_ls = float(b_rets_ass.std() * np.sqrt(252.0)) if len(b_rets_ass) > 2 else 0.0
+    rf_d = (1.0 + params.risk_free_rate) ** (1.0 / 252.0) - 1.0
+    dn_dca = b_rets_dca[b_rets_dca < rf_d] - rf_d
+    dn_std_dca = float(np.sqrt(np.mean(np.square(dn_dca))) * np.sqrt(252.0)) if len(dn_dca) > 0 else 1e-9
+    dn_ls = b_rets_ass[b_rets_ass < rf_d] - rf_d
+    dn_std_ls = float(np.sqrt(np.mean(np.square(dn_ls))) * np.sqrt(252.0)) if len(dn_ls) > 0 else 1e-9
 
-    portfolio_val_dca = cum_shares_dca * adj_prices
+    tot_yrs = max((adj_prices.index[-1] - d0).days / 365.25, 1.0 / 365.25)
+    u_cagr = float((adj_prices.iloc[-1] / adj_prices.iloc[0]) ** (1.0 / tot_yrs) - 1.0)
 
-    inflation_deflator = np.power(1.0 + params.inflation_rate, days_elapsed / 365.25)
-    portfolio_real_val_dca = portfolio_val_dca / inflation_deflator
+    fg_dca = float(val_dca.iloc[-1])
+    gpnl_dca = fg_dca - tot_cap
+    tax_dca = max(0.0, gpnl_dca * params.tax_rate)
+    fn_dca = fg_dca - tax_dca
+    npnl_dca = fn_dca - tot_cap
+    fr_dca = fn_dca / float(infl_def[-1])
 
-    total_capital_mobilized = float(cum_gross_invested_dca.iloc[-1])
-    ls_fee_day1 = compute_order_fee(total_capital_mobilized, params)
-    ls_net_invested_day1 = total_capital_mobilized - ls_fee_day1
-    ls_shares = ls_net_invested_day1 / float(adj_prices.iloc[0])
-    portfolio_val_ls = adj_prices * ls_shares
-    portfolio_real_val_ls = portfolio_val_ls / inflation_deflator
+    fg_ls = float(val_ls.iloc[-1])
+    gpnl_ls = fg_ls - tot_cap
+    tax_ls = max(0.0, gpnl_ls * params.tax_rate)
+    fn_ls = fg_ls - tax_ls
+    npnl_ls = fn_ls - tot_cap
+    fr_ls = fn_ls / float(infl_def[-1])
 
-    dd_dca, max_dd_dca, max_uw_days_dca = compute_underwater_metrics(portfolio_val_dca)
-    dd_ls, max_dd_ls, max_uw_days_ls = compute_underwater_metrics(portfolio_val_ls)
-    dd_asset, max_dd_asset, max_uw_days_asset = compute_underwater_metrics(adj_prices)
-
-    prev_val_dca = portfolio_val_dca.shift(1)
-    twr_daily_dca = ((portfolio_val_dca - net_contrib_dca) / prev_val_dca) - 1.0
-    twr_daily_dca = twr_daily_dca.replace([np.inf, -np.inf], np.nan).dropna()
-
-    bday_mask = adj_prices.index.weekday < 5
-    asset_bday_returns = adj_prices[bday_mask].pct_change().dropna()
-    dca_bday_returns = twr_daily_dca[twr_daily_dca.index.weekday < 5]
-
-    ann_factor = 252.0
-    vol_dca = float(dca_bday_returns.std() * np.sqrt(ann_factor)) if len(dca_bday_returns) > 2 else 0.0
-    vol_ls = float(asset_bday_returns.std() * np.sqrt(ann_factor)) if len(asset_bday_returns) > 2 else 0.0
-
-    rf_daily = (1.0 + params.risk_free_rate) ** (1.0 / ann_factor) - 1.0
-
-    downside_dca = dca_bday_returns[dca_bday_returns < rf_daily] - rf_daily
-    downside_std_dca = (
-        float(np.sqrt(np.mean(np.square(downside_dca))) * np.sqrt(ann_factor))
-        if len(downside_dca) > 0
-        else 1e-9
-    )
-
-    downside_ls = asset_bday_returns[asset_bday_returns < rf_daily] - rf_daily
-    downside_std_ls = (
-        float(np.sqrt(np.mean(np.square(downside_ls))) * np.sqrt(ann_factor))
-        if len(downside_ls) > 0
-        else 1e-9
-    )
-
-    total_years = max((adj_prices.index[-1] - adj_prices.index[0]).days / 365.25, 1.0 / 365.25)
-    underlying_cagr = float((adj_prices.iloc[-1] / adj_prices.iloc[0]) ** (1.0 / total_years) - 1.0)
-
-    final_gross_dca = float(portfolio_val_dca.iloc[-1])
-    gross_pnl_dca = final_gross_dca - total_capital_mobilized
-    tax_dca = max(0.0, gross_pnl_dca * params.tax_rate)
-    final_net_dca = final_gross_dca - tax_dca
-    net_pnl_dca = final_net_dca - total_capital_mobilized
-    final_real_net_dca = final_net_dca / float(inflation_deflator[-1])
-
-    final_gross_ls = float(portfolio_val_ls.iloc[-1])
-    gross_pnl_ls = final_gross_ls - total_capital_mobilized
-    tax_ls = max(0.0, gross_pnl_ls * params.tax_rate)
-    final_net_ls = final_gross_ls - tax_ls
-    net_pnl_ls = final_net_ls - total_capital_mobilized
-    final_real_net_ls = final_net_ls / float(inflation_deflator[-1])
-
-    contrib_events = gross_contrib_dca[gross_contrib_dca > 0]
-    cashflows_dca: List[Tuple[pd.Timestamp, float]] = [
-        (ts, -float(amt)) for ts, amt in contrib_events.items()
-    ]
-    cashflows_dca.append((adj_prices.index[-1], final_net_dca))
-    xirr_dca = compute_xirr(cashflows_dca)
-
-    cashflows_ls: List[Tuple[pd.Timestamp, float]] = [
-        (adj_prices.index[0], -total_capital_mobilized),
-        (adj_prices.index[-1], final_net_ls),
-    ]
-    xirr_ls = compute_xirr(cashflows_ls)
-
-    sharpe_dca = (xirr_dca - params.risk_free_rate) / vol_dca if vol_dca > 1e-9 else 0.0
-    sortino_dca = (xirr_dca - params.risk_free_rate) / downside_std_dca if downside_std_dca > 1e-9 else 0.0
-
-    sharpe_ls = (xirr_ls - params.risk_free_rate) / vol_ls if vol_ls > 1e-9 else 0.0
-    sortino_ls = (xirr_ls - params.risk_free_rate) / downside_std_ls if downside_std_ls > 1e-9 else 0.0
-
-    portfolio_cagr_dca = float((final_net_dca / total_capital_mobilized) ** (1.0 / total_years) - 1.0)
-    portfolio_cagr_ls = float((final_net_ls / total_capital_mobilized) ** (1.0 / total_years) - 1.0)
+    cf_dca = [(ts, -float(amt)) for ts, amt in gross_dca[gross_dca > 0].items()] + [(adj_prices.index[-1], fn_dca)]
+    xirr_dca = compute_xirr(cf_dca)
+    cf_ls = [(d0, -tot_cap), (adj_prices.index[-1], fn_ls)]
+    xirr_ls = compute_xirr(cf_ls)
 
     daily_df = pd.DataFrame(
         {
             "Market_Price": adj_prices,
-            "Gross_Contribution": gross_contrib_dca,
+            "Gross_Contribution": gross_dca,
             "Brokerage_Fee": fees_dca,
-            "Net_Contribution": net_contrib_dca,
-            "Shares_Bought": shares_bought_dca,
-            "Cum_Shares": cum_shares_dca,
-            "Cum_Invested": cum_gross_invested_dca,
-            "Cum_Fees": cum_fees_dca,
-            "PRU": pru_series,
-            "Portfolio_Gross_Value": portfolio_val_dca,
-            "Portfolio_Real_Gross_Value": portfolio_real_val_dca,
-            "Latent_PnL_Gross": portfolio_val_dca - cum_gross_invested_dca,
+            "Net_Contribution": net_dca,
+            "Shares_Bought": shares_bought,
+            "Cum_Shares": cum_shares,
+            "Cum_Invested": cum_inv,
+            "Cum_Fees": cum_fees,
+            "PRU": pru,
+            "Portfolio_Gross_Value": val_dca,
+            "Portfolio_Real_Gross_Value": real_val_dca,
+            "Latent_PnL_Gross": val_dca - cum_inv,
             "Drawdown_DCA": dd_dca,
-            "Drawdown_Underlying": dd_asset,
-            "LumpSum_Gross_Value": portfolio_val_ls,
-            "LumpSum_Real_Gross_Value": portfolio_real_val_ls,
+            "Drawdown_Underlying": dd_ass,
+            "LumpSum_Gross_Value": val_ls,
+            "LumpSum_Real_Gross_Value": real_val_ls,
             "Drawdown_LumpSum": dd_ls,
         },
         index=adj_prices.index,
     )
     daily_df.index.name = "Date"
 
-    dca_metrics = BacktestMetrics(
-        total_invested=total_capital_mobilized,
-        final_gross_value=final_gross_dca,
-        final_net_value=final_net_dca,
-        final_real_net_value=final_real_net_dca,
-        gross_pnl=gross_pnl_dca,
-        net_pnl=net_pnl_dca,
-        net_return_pct=(net_pnl_dca / total_capital_mobilized) if total_capital_mobilized > 0 else 0.0,
-        tax_paid=tax_dca,
-        total_brokerage_fees=float(cum_fees_dca.iloc[-1]),
-        xirr=xirr_dca,
-        underlying_cagr=underlying_cagr,
-        portfolio_cagr=portfolio_cagr_dca,
-        annualized_volatility=vol_dca,
-        sharpe_ratio=sharpe_dca,
-        sortino_ratio=sortino_dca,
-        max_drawdown=max_dd_dca,
-        max_underwater_days=max_uw_days_dca,
-        total_shares=float(cum_shares_dca.iloc[-1]),
-        final_pru=float(pru_series.iloc[-1]),
-        final_market_price=float(adj_prices.iloc[-1]),
-        num_orders=int((gross_contrib_dca > 0).sum()),
+    m_dca = BacktestMetrics(
+        tot_cap,
+        fg_dca,
+        fn_dca,
+        fr_dca,
+        gpnl_dca,
+        npnl_dca,
+        npnl_dca / tot_cap if tot_cap > 0 else 0.0,
+        tax_dca,
+        float(cum_fees.iloc[-1]),
+        xirr_dca,
+        u_cagr,
+        float((fn_dca / tot_cap) ** (1.0 / tot_yrs) - 1.0),
+        vol_dca,
+        (xirr_dca - params.risk_free_rate) / vol_dca if vol_dca > 1e-9 else 0.0,
+        (xirr_dca - params.risk_free_rate) / dn_std_dca if dn_std_dca > 1e-9 else 0.0,
+        max_dd_dca,
+        uw_dca,
+        float(cum_shares.iloc[-1]),
+        float(pru.iloc[-1]),
+        float(adj_prices.iloc[-1]),
+        int((gross_dca > 0).sum()),
     )
-
-    ls_metrics = BacktestMetrics(
-        total_invested=total_capital_mobilized,
-        final_gross_value=final_gross_ls,
-        final_net_value=final_net_ls,
-        final_real_net_value=final_real_net_ls,
-        gross_pnl=gross_pnl_ls,
-        net_pnl=net_pnl_ls,
-        net_return_pct=(net_pnl_ls / total_capital_mobilized) if total_capital_mobilized > 0 else 0.0,
-        tax_paid=tax_ls,
-        total_brokerage_fees=ls_fee_day1,
-        xirr=xirr_ls,
-        underlying_cagr=underlying_cagr,
-        portfolio_cagr=portfolio_cagr_ls,
-        annualized_volatility=vol_ls,
-        sharpe_ratio=sharpe_ls,
-        sortino_ratio=sortino_ls,
-        max_drawdown=max_dd_ls,
-        max_underwater_days=max_uw_days_asset,
-        total_shares=ls_shares,
-        final_pru=float(adj_prices.iloc[0]) * (total_capital_mobilized / ls_net_invested_day1),
-        final_market_price=float(adj_prices.iloc[-1]),
-        num_orders=1,
+    m_ls = BacktestMetrics(
+        tot_cap,
+        fg_ls,
+        fn_ls,
+        fr_ls,
+        gpnl_ls,
+        npnl_ls,
+        npnl_ls / tot_cap if tot_cap > 0 else 0.0,
+        tax_ls,
+        ls_fee,
+        xirr_ls,
+        u_cagr,
+        float((fn_ls / tot_cap) ** (1.0 / tot_yrs) - 1.0),
+        vol_ls,
+        (xirr_ls - params.risk_free_rate) / vol_ls if vol_ls > 1e-9 else 0.0,
+        (xirr_ls - params.risk_free_rate) / dn_std_ls if dn_std_ls > 1e-9 else 0.0,
+        max_dd_ls,
+        uw_ass,
+        ls_shares,
+        float(adj_prices.iloc[0]) * (tot_cap / (tot_cap - ls_fee)),
+        float(adj_prices.iloc[-1]),
+        1,
     )
-
-    return AssetBacktestResult(
-        asset_label=asset_label,
-        ticker=ticker,
-        currency=effective_currency,
-        daily_df=daily_df,
-        dca_metrics=dca_metrics,
-        lump_sum_metrics=ls_metrics,
-        cashflows_dca=cashflows_dca,
-        cashflows_ls=cashflows_ls,
-    )
+    return AssetBacktestResult(asset_label, ticker, eff_curr, daily_df, m_dca, m_ls, cf_dca, cf_ls)
 
 
 def build_annual_summary_table(daily_df: pd.DataFrame) -> pd.DataFrame:
     df = daily_df.copy()
     df["Year"] = df.index.year
-    years = sorted(df["Year"].unique())
-
-    records: List[Dict[str, float]] = []
-    prev_end_val = 0.0
-
-    for yr in years:
+    records = []
+    prev_val = 0.0
+    for yr in sorted(df["Year"].unique()):
         sub = df[df["Year"] == yr]
-        flows_yr = float(sub["Gross_Contribution"].sum())
-        cum_invested_end = float(sub["Cum_Invested"].iloc[-1])
-        end_val = float(sub["Portfolio_Gross_Value"].iloc[-1])
-        latent_pnl = end_val - cum_invested_end
-        latent_pnl_pct = (latent_pnl / cum_invested_end * 100.0) if cum_invested_end > 0 else 0.0
-
-        if prev_end_val == 0.0:
-            denom = flows_yr
+        flows = float(sub["Gross_Contribution"].sum())
+        cum_i = float(sub["Cum_Invested"].iloc[-1])
+        end_v = float(sub["Portfolio_Gross_Value"].iloc[-1])
+        lat = end_v - cum_i
+        if prev_val == 0.0:
+            denom = flows
         else:
-            t_start = sub.index[0]
-            t_end = sub.index[-1]
-            span_days = max((t_end - t_start).days, 1)
-            weights = (t_end - sub.index).days / span_days
-            weighted_flows = float((sub["Gross_Contribution"] * weights).sum())
-            denom = prev_end_val + max(weighted_flows, flows_yr * 0.5)
-
-        gain_yr = end_val - prev_end_val - flows_yr
-        perf_yr_pct = (gain_yr / denom * 100.0) if denom > 0 else 0.0
-
+            span = max((sub.index[-1] - sub.index[0]).days, 1)
+            w_flows = float((sub["Gross_Contribution"] * ((sub.index[-1] - sub.index).days / span)).sum())
+            denom = prev_val + max(w_flows, flows * 0.5)
+        gain = end_v - prev_val - flows
         records.append(
             {
                 "Année": int(yr),
-                "Versements de l'année (€)": round(flows_yr, 2),
-                "Cumul Versé (€)": round(cum_invested_end, 2),
-                "Valeur Fin d'Année (€)": round(end_val, 2),
-                "Gain / Perte de l'année (€)": round(gain_yr, 2),
-                "Performance Annuelle (%)": round(perf_yr_pct, 2),
-                "Plus/Moins-Value Latente (€)": round(latent_pnl, 2),
-                "Plus/Moins-Value Latente (%)": round(latent_pnl_pct, 2),
-                "PRU Fin d'Année (€)": round(float(sub["PRU"].iloc[-1]), 2),
-                "Prix Marché Fin d'Année (€)": round(float(sub["Market_Price"].iloc[-1]), 2),
+                "Versé l'année (€)": round(flows, 0),
+                "Cumul Versé (€)": round(cum_i, 0),
+                "Valeur Fin d'Année (€)": round(end_v, 0),
+                "Gain/Perte Annuel (€)": round(gain, 0),
+                "Perf. Annuelle (%)": round((gain / denom * 100.0) if denom > 0 else 0.0, 1),
+                "Plus-Value Latente (€)": round(lat, 0),
             }
         )
-        prev_end_val = end_val
-
+        prev_val = end_v
     return pd.DataFrame(records)
 
 
 def run_monte_carlo_projection(
-    res: AssetBacktestResult,
-    params: SimulationParams,
-    horizon_years: int,
-    n_trajectories: int = 500,
+    res: AssetBacktestResult, params: SimulationParams, horizon_years: int, n_trajectories: int = 500
 ) -> pd.DataFrame:
     hist_df = res.daily_df
-    bday_prices = hist_df["Market_Price"][hist_df.index.weekday < 5]
-    log_rets = np.log(bday_prices / bday_prices.shift(1)).dropna()
-
-    mu_annual = float(log_rets.mean() * 252.0)
-    sigma_annual = float(log_rets.std() * np.sqrt(252.0))
-
-    n_months = horizon_years * 12
-    dt = 1.0 / 12.0
-
-    if params.dca_frequency == "Hebdomadaire":
-        monthly_gross_dca = params.dca_amount * (52.0 / 12.0)
-        monthly_fee = compute_order_fee(params.dca_amount, params) * (52.0 / 12.0)
-    elif params.dca_frequency == "Mensuelle":
-        monthly_gross_dca = params.dca_amount
-        monthly_fee = compute_order_fee(params.dca_amount, params)
-    else:
-        monthly_gross_dca = params.dca_amount / 3.0
-        monthly_fee = compute_order_fee(params.dca_amount, params) / 3.0
-
-    monthly_net_dca = max(0.0, monthly_gross_dca - monthly_fee)
-
-    rng = np.random.default_rng(seed=42)
-    z = rng.standard_normal((n_months, n_trajectories))
-    monthly_growth = np.exp((mu_annual - 0.5 * sigma_annual**2) * dt + sigma_annual * np.sqrt(dt) * z)
-
-    start_wealth = float(hist_df["Portfolio_Gross_Value"].iloc[-1])
-    start_invested = float(hist_df["Cum_Invested"].iloc[-1])
-
-    wealth_paths = np.zeros((n_months + 1, n_trajectories), dtype=np.float64)
-    wealth_paths[0, :] = start_wealth
-    invested_path = np.zeros(n_months + 1, dtype=np.float64)
-    invested_path[0] = start_invested
-
-    for m in range(1, n_months + 1):
-        wealth_paths[m, :] = (wealth_paths[m - 1, :] + monthly_net_dca) * monthly_growth[m - 1, :]
-        invested_path[m] = invested_path[m - 1] + monthly_gross_dca
-
-    future_dates = pd.date_range(
-        start=hist_df.index[-1], periods=n_months + 1, freq="ME"
+    b_prices = hist_df["Market_Price"][hist_df.index.weekday < 5]
+    log_r = np.log(b_prices / b_prices.shift(1)).dropna()
+    mu, sigma = float(log_r.mean() * 252.0), float(log_r.std() * np.sqrt(252.0))
+    n_m, dt = horizon_years * 12, 1.0 / 12.0
+    mult = (
+        (52.0 / 12.0)
+        if params.dca_frequency == "Hebdomadaire"
+        else (1.0 if params.dca_frequency == "Mensuelle" else 1.0 / 3.0)
     )
-
+    m_gross = params.dca_amount * mult
+    m_net = max(0.0, m_gross - compute_order_fee(params.dca_amount, params) * mult)
+    rng = np.random.default_rng(seed=42)
+    growth = np.exp(
+        (mu - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * rng.standard_normal((n_m, n_trajectories))
+    )
+    w_paths = np.zeros((n_m + 1, n_trajectories))
+    w_paths[0, :] = float(hist_df["Portfolio_Gross_Value"].iloc[-1])
+    inv_path = np.zeros(n_m + 1)
+    inv_path[0] = float(hist_df["Cum_Invested"].iloc[-1])
+    for m in range(1, n_m + 1):
+        w_paths[m, :] = (w_paths[m - 1, :] + m_net) * growth[m - 1, :]
+        inv_path[m] = inv_path[m - 1] + m_gross
+    f_dates = pd.date_range(start=hist_df.index[-1], periods=n_m + 1, freq="ME")
     return pd.DataFrame(
         {
-            "Date": future_dates,
-            "Cum_Invested": invested_path,
-            "P10": np.percentile(wealth_paths, 10, axis=1),
-            "P25": np.percentile(wealth_paths, 25, axis=1),
-            "P50": np.percentile(wealth_paths, 50, axis=1),
-            "P75": np.percentile(wealth_paths, 75, axis=1),
-            "P90": np.percentile(wealth_paths, 90, axis=1),
+            "Date": f_dates,
+            "Cum_Invested": inv_path,
+            "P10": np.percentile(w_paths, 10, axis=1),
+            "P50": np.percentile(w_paths, 50, axis=1),
+            "P90": np.percentile(w_paths, 90, axis=1),
         }
     ).set_index("Date")
 
 
 # ==============================================================================
-# 5. COMPOSANTS GRAPHIQUES (PLOTLY DARK / MODERN THEME)
+# 4. GRAPHIQUES ÉPURÉS POUR MOBILE
 # ==============================================================================
 
 
-def apply_modern_dark_layout(fig: go.Figure, title: str, height: int = 480) -> go.Figure:
+def style_mobile_chart(fig: go.Figure, height: int = 360) -> go.Figure:
     fig.update_layout(
-        title=dict(text=title, font=dict(size=18, color="#F8FAFC"), x=0.01),
         template="plotly_dark",
-        paper_bgcolor="rgba(15, 23, 42, 0.0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(15, 23, 42, 0.45)",
         height=height,
-        margin=dict(l=20, r=20, t=55, b=20),
+        margin=dict(l=8, r=8, t=28, b=8),
         hovermode="x unified",
         legend=dict(
             orientation="h",
             yanchor="bottom",
             y=1.02,
-            xanchor="right",
-            x=1.0,
+            xanchor="left",
+            x=0.0,
+            font=dict(size=11),
             bgcolor="rgba(0,0,0,0)",
-            font=dict(size=12),
         ),
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(148, 163, 184, 0.12)",
-            zeroline=False,
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(148, 163, 184, 0.12)",
-            zeroline=False,
-        ),
+        xaxis=dict(showgrid=False, zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor="rgba(148, 163, 184, 0.12)", zeroline=False, tickformat=",.0f"),
     )
     return fig
 
 
-def plot_portfolio_overview(res: AssetBacktestResult, params: SimulationParams) -> go.Figure:
-    df = res.daily_df
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Cum_Invested"],
-            name="Cumul des Versements (Capital Investi)",
-            mode="lines",
-            line=dict(color="#94A3B8", width=2, shape="hv"),
-            fill="tozeroy",
-            fillcolor="rgba(148, 163, 184, 0.12)",
-            hovertemplate="%{y:,.0f} €<extra>Capital Investi</extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Portfolio_Gross_Value"],
-            name=f"Valorisation Portefeuille ({res.asset_label})",
-            mode="lines",
-            line=dict(color="#00D4FF", width=2.8),
-            fill="tonexty",
-            fillcolor="rgba(0, 212, 255, 0.12)",
-            hovertemplate="%{y:,.0f} €<extra>Valeur Portefeuille</extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Portfolio_Real_Gross_Value"],
-            name=f"Pouvoir d'Achat Réel (Inflation {params.inflation_rate * 100:.1f}%/an)",
-            mode="lines",
-            line=dict(color="#F59E0B", width=2, dash="dot"),
-            hovertemplate="%{y:,.0f} €<extra>Valeur Réelle (Euros Constants)</extra>",
-        )
-    )
-
-    fig.update_yaxes(title_text="Valorisation (€)", tickformat=",.0f")
-    return apply_modern_dark_layout(
-        fig,
-        title=f"Évolution de la Valorisation, du Capital Versé et du Pouvoir d'Achat — {res.asset_label}",
-        height=500,
-    )
-
-
-def plot_underwater_drawdown(res: AssetBacktestResult) -> go.Figure:
-    df = res.daily_df
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Drawdown_Underlying"] * 100.0,
-            name="Drawdown Sous-Jacent Pur (Marché)",
-            mode="lines",
-            line=dict(color="rgba(248, 113, 113, 0.55)", width=1.4, dash="dot"),
-            hovertemplate="%{y:.2f} %<extra>DD Sous-Jacent</extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Drawdown_DCA"] * 100.0,
-            name="Drawdown Portefeuille DCA",
-            mode="lines",
-            line=dict(color="#EF4444", width=2.2),
-            fill="tozeroy",
-            fillcolor="rgba(239, 68, 68, 0.25)",
-            hovertemplate="%{y:.2f} %<extra>DD Portefeuille DCA</extra>",
-        )
-    )
-
-    fig.update_yaxes(title_text="Baisse depuis le plus haut (%)", ticksuffix=" %")
-    return apply_modern_dark_layout(
-        fig,
-        title=f"Graphique Underwater (Drawdown depuis le dernier ATH) — Max DD : {res.dca_metrics.max_drawdown * 100:.2f}%",
-        height=420,
-    )
-
-
-def plot_market_price_vs_pru(res: AssetBacktestResult) -> go.Figure:
-    df = res.daily_df
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Market_Price"],
-            name=f"Prix du Marché ({res.ticker})",
-            mode="lines",
-            line=dict(color="#10B981", width=2.2),
-            hovertemplate="%{y:,.2f} €<extra>Prix du Marché</extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["PRU"],
-            name="PRU Moyen Pondéré (DCA)",
-            mode="lines",
-            line=dict(color="#F59E0B", width=2.6),
-            hovertemplate="%{y:,.2f} €<extra>PRU (Coût Moyen)</extra>",
-        )
-    )
-
-    bargain_buys = df[(df["Gross_Contribution"] > 0) & (df["Market_Price"] < df["PRU"])]
-    if not bargain_buys.empty:
-        fig.add_trace(
-            go.Scatter(
-                x=bargain_buys.index,
-                y=bargain_buys["Market_Price"],
-                name="Achats DCA sous le PRU (Relutifs)",
-                mode="markers",
-                marker=dict(color="#38BDF8", size=6, symbol="circle"),
-                hovertemplate="Achat à %{y:,.2f} € (sous le PRU)<extra></extra>",
-            )
-        )
-
-    fig.update_yaxes(title_text="Prix unitaire (€)", tickformat=",.2f")
-    return apply_modern_dark_layout(
-        fig,
-        title=f"Dynamique du Prix de Marché vs Prix de Revient Unitaire (PRU) — {res.asset_label}",
-        height=440,
-    )
-
-
-def plot_multi_asset_comparison(results: List[AssetBacktestResult]) -> go.Figure:
-    fig = go.Figure()
-
-    if not results:
-        return fig
-
-    ref_df = results[0].daily_df
-    fig.add_trace(
-        go.Scatter(
-            x=ref_df.index,
-            y=ref_df["Cum_Invested"],
-            name="Capital Total Versé",
-            mode="lines",
-            line=dict(color="#94A3B8", width=2, dash="dash", shape="hv"),
-            hovertemplate="%{y:,.0f} €<extra>Capital Versé</extra>",
-        )
-    )
-
-    for idx, res in enumerate(results):
-        color = COLOR_PALETTE[idx % len(COLOR_PALETTE)]
-        fig.add_trace(
-            go.Scatter(
-                x=res.daily_df.index,
-                y=res.daily_df["Portfolio_Gross_Value"],
-                name=f"{res.asset_label} (TRI: {res.dca_metrics.xirr * 100:.2f}%)",
-                mode="lines",
-                line=dict(color=color, width=2.5),
-                hovertemplate=f"%{{y:,.0f}} €<extra>{res.asset_label}</extra>",
-            )
-        )
-
-    fig.update_yaxes(title_text="Valorisation Brute (€)", tickformat=",.0f")
-    return apply_modern_dark_layout(
-        fig,
-        title="Comparaison Multi-Actifs à Stratégie DCA Identique",
-        height=480,
-    )
-
-
-def plot_dca_vs_lumpsum(res: AssetBacktestResult) -> go.Figure:
-    df = res.daily_df
-    fig = make_subplots(
-        rows=2,
-        cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.08,
-        row_heights=[0.68, 0.32],
-        subplot_titles=(
-            f"Valorisation Comparée : DCA vs Lump Sum ({res.asset_label})",
-            "Drawdown Comparé (% depuis le plus haut)",
-        ),
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Cum_Invested"],
-            name="Capital Cumulé DCA",
-            mode="lines",
-            line=dict(color="#64748B", width=1.8, dash="dot", shape="hv"),
-            hovertemplate="%{y:,.0f} €<extra>Cumul Versé DCA</extra>",
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Portfolio_Gross_Value"],
-            name="Stratégie DCA (Progressif)",
-            mode="lines",
-            line=dict(color="#00D4FF", width=2.8),
-            hovertemplate="%{y:,.0f} €<extra>Portefeuille DCA</extra>",
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["LumpSum_Gross_Value"],
-            name="Stratégie 100% Lump Sum (Jour 1)",
-            mode="lines",
-            line=dict(color="#A855F7", width=2.5),
-            hovertemplate="%{y:,.0f} €<extra>Portefeuille Lump Sum</extra>",
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Drawdown_DCA"] * 100.0,
-            name="Drawdown DCA (%)",
-            mode="lines",
-            line=dict(color="#00D4FF", width=1.8),
-            fill="tozeroy",
-            fillcolor="rgba(0, 212, 255, 0.15)",
-            hovertemplate="%{y:.2f} %<extra>DD DCA</extra>",
-        ),
-        row=2,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=df.index,
-            y=df["Drawdown_LumpSum"] * 100.0,
-            name="Drawdown Lump Sum (%)",
-            mode="lines",
-            line=dict(color="#A855F7", width=1.8),
-            hovertemplate="%{y:.2f} %<extra>DD Lump Sum</extra>",
-        ),
-        row=2,
-        col=1,
-    )
-
-    fig.update_yaxes(title_text="Valorisation (€)", tickformat=",.0f", row=1, col=1)
-    fig.update_yaxes(title_text="Drawdown (%)", ticksuffix=" %", row=2, col=1)
-    return apply_modern_dark_layout(fig, title="", height=600)
-
-
-def plot_monte_carlo_cone(mc_df: pd.DataFrame, asset_label: str) -> go.Figure:
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Scatter(
-            x=mc_df.index,
-            y=mc_df["P90"],
-            name="Scénario Optimiste (90e percentile)",
-            mode="lines",
-            line=dict(color="rgba(16, 185, 129, 0.5)", width=1.5),
-            hovertemplate="%{y:,.0f} €<extra>P90 (Optimiste)</extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=mc_df.index,
-            y=mc_df["P10"],
-            name="Scénario Prudent (10e percentile)",
-            mode="lines",
-            line=dict(color="rgba(239, 68, 68, 0.5)", width=1.5),
-            fill="tonexty",
-            fillcolor="rgba(0, 212, 255, 0.12)",
-            hovertemplate="%{y:,.0f} €<extra>P10 (Prudent)</extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=mc_df.index,
-            y=mc_df["P50"],
-            name="Trajectoire Médiane (P50)",
-            mode="lines",
-            line=dict(color="#00D4FF", width=3.0),
-            hovertemplate="%{y:,.0f} €<extra>Médiane (P50)</extra>",
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=mc_df.index,
-            y=mc_df["Cum_Invested"],
-            name="Capital Cumulé Projeté",
-            mode="lines",
-            line=dict(color="#94A3B8", width=2.0, dash="dash"),
-            hovertemplate="%{y:,.0f} €<extra>Capital Projeté</extra>",
-        )
-    )
-
-    fig.update_yaxes(title_text="Valorisation Projetée (€)", tickformat=",.0f")
-    return apply_modern_dark_layout(
-        fig,
-        title=f"Projection Probabiliste Monte Carlo (500 trajectoires GBM) — {asset_label}",
-        height=440,
-    )
-
-
 # ==============================================================================
-# 6. INTERFACE UTILISATEUR : SIDEBAR DE PARAMÉTRAGE
+# 5. PANNEAU DE CONFIGURATION INTUITIF (SUR LA PAGE PRINCIPALE)
 # ==============================================================================
 
 
-def render_sidebar() -> Tuple[List[Tuple[str, str, str, bool]], Optional[io.BytesIO], SimulationParams]:
-    st.sidebar.title("⚙️ Paramètres Quant")
-    st.sidebar.caption("Configuration du moteur de backtesting vectorisé")
+def render_top_config() -> Tuple[List[Tuple[str, str, str, bool]], Optional[io.BytesIO], SimulationParams]:
+    st.markdown("### 💎 Simulateur d'Investissement Bourse")
 
-    st.sidebar.subheader("1. Univers d'Investissement")
-    default_choices = [
-        "S&P 500 - ETF SPY (Total Return / Div. Réinvestis)",
-        "Amundi MSCI World PEA (CW8.PA - EUR)",
-        "CAC 40 - Indice (^FCHI)",
-    ]
-    selected_labels = st.sidebar.multiselect(
-        "Indices & ETFs préconfigurés",
-        options=list(PRECONFIGURED_ASSETS.keys()),
-        default=default_choices,
-    )
+    with st.container(border=True):
+        # 1. Choix rapide des actifs
+        selected_labels = st.multiselect(
+            "📌 Choisissez vos actions ou ETFs à simuler :",
+            options=list(ASSET_CATALOG.keys()),
+            default=[
+                "🌍 MSCI World PEA (Amundi CW8)",
+                "🇫🇷 Air Liquide (AI.PA - PEA)",
+                "🇺🇸 S&P 500 ETF (SPY - Dividendes inclus)",
+            ],
+        )
 
-    custom_tickers_raw = st.sidebar.text_input(
-        "Tickers Yahoo personnalisés (séparés par des virgules)",
-        value="",
-        placeholder="Ex: ASML.AS, AI.PA, SU.PA, NVDA",
-    )
+        # 2. Montants d'investissement (Côte à côte même sur mobile)
+        c1, c2 = st.columns(2)
+        with c1:
+            initial_capital = st.number_input(
+                "💰 Dépôt initial (Jour 1) en €",
+                min_value=0,
+                max_value=10_000_000,
+                value=2_000,
+                step=500,
+            )
+        with c2:
+            dca_amount = st.number_input(
+                "🔄 Épargne régulière (DCA) en €",
+                min_value=0,
+                max_value=1_000_000,
+                value=300,
+                step=50,
+            )
 
-    uploaded_csv = st.sidebar.file_uploader(
-        "Import CSV personnalisé (Optionnel)",
-        type=["csv"],
-    )
+        # 3. Durée et enveloppe fiscale (Boutons rapides)
+        c3, c4 = st.columns(2)
+        with c3:
+            horizon_choice = st.selectbox(
+                "⏳ Durée du test historique",
+                options=["5 dernières années", "10 dernières années", "15 dernières années", "20 dernières années", "Dates personnalisées"],
+                index=2,
+            )
+        with c4:
+            tax_choice = st.selectbox(
+                "🏦 Enveloppe Fiscale",
+                options=[
+                    "PEA (> 5 ans : 17,2 %)",
+                    "Compte-Titres (Flat Tax : 30 %)",
+                    "Brut (0 % d'impôt)",
+                ],
+                index=0,
+            )
 
-    convert_usd_to_eur = st.sidebar.toggle(
-        "Convertir les actifs USD en EUR (Taux réel EURUSD=X)",
-        value=True,
-    )
+        today = date.today()
+        if horizon_choice == "Dates personnalisées":
+            cd1, cd2 = st.columns(2)
+            start_date = cd1.date_input("Date de début", value=today - timedelta(days=int(12 * 365.25)), min_value=date(1985, 1, 1))
+            end_date = cd2.date_input("Date de fin", value=today)
+        else:
+            years_map = {
+                "5 dernières années": 5,
+                "10 dernières années": 10,
+                "15 dernières années": 15,
+                "20 dernières années": 20,
+            }
+            yrs = years_map[horizon_choice]
+            start_date = today - timedelta(days=int(yrs * 365.25))
+            end_date = today
+
+        # 4. Options avancées repliées pour garder une interface ultra propre
+        with st.expander("⚙️ Plus d'options ( Autres actions Yahoo, Frais, Fréquence, Inflation, CSV )"):
+            custom_tickers_raw = st.text_input(
+                "Ajouter d'autres codes Yahoo Finance (séparés par une virgule)",
+                value="",
+                placeholder="Ex: AAPL, GOOGL, TTE.PA, BNP.PA",
+            )
+            ca1, ca2 = st.columns(2)
+            with ca1:
+                dca_frequency = st.selectbox("Fréquence des versements", ["Mensuelle", "Hebdomadaire", "Trimestrielle"])
+                fee_pct_input = st.number_input("Frais de courtage par achat (%)", 0.0, 5.0, 0.10, 0.05)
+                inflation_input = st.number_input("Inflation annuelle moyenne (%)", 0.0, 15.0, 2.0, 0.2)
+            with ca2:
+                dca_day_rule = st.selectbox("Jour du versement", ["1er du mois", "15 du mois", "Dernier jour ouvré"])
+                ter_input = st.number_input("Frais de gestion annuels indiciels (%)", 0.0, 3.0, 0.20, 0.05)
+                convert_usd_to_eur = st.toggle("Convertir les actifs $ en € (EURUSD)", value=True)
+
+            uploaded_csv = st.file_uploader("Importer un fichier CSV externe (Optionnel)", type=["csv"])
 
     assets_to_fetch: List[Tuple[str, str, str, bool]] = []
     for lbl in selected_labels:
-        tck, curr, is_bare = PRECONFIGURED_ASSETS[lbl]
+        tck, curr, is_bare = ASSET_CATALOG[lbl]
         assets_to_fetch.append((lbl, tck, curr, is_bare))
 
     if custom_tickers_raw.strip():
         for raw_t in custom_tickers_raw.split(","):
             clean_t = raw_t.strip().upper()
             if clean_t and not any(clean_t == x[1] for x in assets_to_fetch):
-                is_bare_custom = clean_t.startswith("^")
-                assets_to_fetch.append((f"Custom ({clean_t})", clean_t, "USD", is_bare_custom))
+                assets_to_fetch.append((f"Action ({clean_t})", clean_t, "USD", clean_t.startswith("^")))
 
-    st.sidebar.divider()
-
-    st.sidebar.subheader("2. Période Historique")
-    today = date.today()
-    default_start = today - timedelta(days=int(15 * 365.25))
-
-    col_d1, col_d2 = st.sidebar.columns(2)
-    with col_d1:
-        start_date = st.date_input(
-            "Date de début",
-            value=default_start,
-            min_value=date(1980, 1, 1),
-            max_value=today - timedelta(days=30),
-        )
-    with col_d2:
-        end_date = st.date_input(
-            "Date de fin",
-            value=today,
-            min_value=start_date + timedelta(days=30),
-            max_value=today,
-        )
-
-    st.sidebar.divider()
-
-    st.sidebar.subheader("3. Flux d'Investissement")
-    initial_capital = st.sidebar.number_input(
-        "Capital initial (Lump Sum au Jour 1) en €",
-        min_value=0.0,
-        max_value=10_000_000.0,
-        value=5_000.0,
-        step=500.0,
-    )
-    dca_amount = st.sidebar.number_input(
-        "Versement programmé (DCA) en €",
-        min_value=0.0,
-        max_value=1_000_000.0,
-        value=400.0,
-        step=50.0,
-    )
-    dca_frequency = st.sidebar.selectbox(
-        "Fréquence du DCA",
-        options=["Mensuelle", "Hebdomadaire", "Trimestrielle"],
-        index=0,
-    )
-
-    if dca_frequency in ["Mensuelle", "Trimestrielle"]:
-        dca_day_rule = st.sidebar.selectbox(
-            "Jour d'exécution dans le mois",
-            options=["1er du mois", "15 du mois", "Dernier jour ouvré"],
-            index=0,
-        )
-    else:
-        dca_day_rule = "1er du mois"
-
-    st.sidebar.divider()
-
-    st.sidebar.subheader("4. Frais & Fiscalité")
-    fee_mode = st.sidebar.radio(
-        "Type de frais de courtage par ordre",
-        options=["Pourcentage (%)", "Fixe (€)"],
-        horizontal=True,
-    )
-
-    if fee_mode == "Pourcentage (%)":
-        col_f1, col_f2 = st.sidebar.columns(2)
-        with col_f1:
-            fee_pct_input = st.number_input(
-                "Courtage (%)", min_value=0.0, max_value=5.0, value=0.10, step=0.05, format="%.2f"
-            )
-        with col_f2:
-            fee_min_eur = st.number_input(
-                "Minimum / ordre (€)", min_value=0.0, max_value=50.0, value=0.0, step=0.5, format="%.2f"
-            )
-        fee_fixed_eur = 0.0
-    else:
-        fee_fixed_eur = st.sidebar.number_input(
-            "Frais fixe par ordre (€)", min_value=0.0, max_value=100.0, value=1.0, step=0.5, format="%.2f"
-        )
-        fee_pct_input = 0.0
-        fee_min_eur = 0.0
-
-    ter_input = st.sidebar.number_input(
-        "Frais de gestion annuels ETF (TER en %)",
-        min_value=0.0,
-        max_value=3.0,
-        value=0.20,
-        step=0.05,
-        format="%.2f",
-    )
-    apply_ter_to_etfs = st.sidebar.checkbox(
-        "Déduire aussi ce TER sur les ETFs cotés",
-        value=False,
-    )
-
-    tax_options = {
-        "PEA (> 5 ans) — 17,2 % (Prélèvements sociaux)": 0.172,
-        "Compte-Titres Ordinaire (CTO - Flat Tax) — 30,0 %": 0.30,
-        "Brut d'impôt — 0,0 %": 0.0,
+    tax_map = {
+        "PEA (> 5 ans : 17,2 %)": 0.172,
+        "Compte-Titres (Flat Tax : 30 %)": 0.30,
+        "Brut (0 % d'impôt)": 0.0,
     }
-    tax_regime_name = st.sidebar.selectbox(
-        "Fiscalité à la sortie (sur la plus-value nette)",
-        options=list(tax_options.keys()),
-        index=0,
-    )
-
-    col_m1, col_m2 = st.sidebar.columns(2)
-    with col_m1:
-        inflation_input = st.number_input(
-            "Inflation moy. (%/an)", min_value=0.0, max_value=15.0, value=2.0, step=0.2, format="%.1f"
-        )
-    with col_m2:
-        rf_input = st.number_input(
-            "Taux sans risque (%)", min_value=0.0, max_value=10.0, value=2.5, step=0.25, format="%.2f"
-        )
 
     params = SimulationParams(
         start_date=start_date,
@@ -1308,16 +831,16 @@ def render_sidebar() -> Tuple[List[Tuple[str, str, str, bool]], Optional[io.Byte
         dca_amount=float(dca_amount),
         dca_frequency=dca_frequency,
         dca_day_rule=dca_day_rule,
-        fee_mode=fee_mode,
+        fee_mode="Pourcentage (%)",
         fee_pct=float(fee_pct_input) / 100.0,
-        fee_min_eur=float(fee_min_eur),
-        fee_fixed_eur=float(fee_fixed_eur),
+        fee_min_eur=0.0,
+        fee_fixed_eur=0.0,
         annual_ter=float(ter_input) / 100.0,
-        apply_ter_to_etfs=apply_ter_to_etfs,
-        tax_regime_name=tax_regime_name,
-        tax_rate=tax_options[tax_regime_name],
+        apply_ter_to_etfs=False,
+        tax_regime_name=tax_choice,
+        tax_rate=tax_map[tax_choice],
         inflation_rate=float(inflation_input) / 100.0,
-        risk_free_rate=float(rf_input) / 100.0,
+        risk_free_rate=0.025,
         convert_usd_to_eur=convert_usd_to_eur,
     )
 
@@ -1325,356 +848,291 @@ def render_sidebar() -> Tuple[List[Tuple[str, str, str, bool]], Optional[io.Byte
 
 
 # ==============================================================================
-# 7. ORCHESTRATION PRINCIPALE & AFFICHAGE DES 4 ONGLETS
+# 6. AFFICHAGE PRINCIPAL INTUITIF
 # ==============================================================================
 
 
 def main() -> None:
-    st.title("📊 QuantDCA & Lump Sum Backtester Pro")
-    st.markdown(
-        "**Simulateur quantitatif d'investissement programmé (DCA) et Lump Sum** — "
-        "Données historiques réelles Yahoo Finance & CSV, calcul exact du TRI (XIRR par Newton-Raphson), "
-        "analyse de Drawdown (Underwater), fiscalité PEA/CTO et projections Monte Carlo."
-    )
-
-    assets_to_fetch, uploaded_csv, params = render_sidebar()
+    assets_to_fetch, uploaded_csv, params = render_top_config()
 
     if not assets_to_fetch and uploaded_csv is None:
-        st.warning(
-            "👈 Veuillez sélectionner au moins un actif dans la barre latérale ou importer un fichier CSV pour lancer la simulation."
-        )
+        st.info("👆 Sélectionnez au moins une action ou un ETF ci-dessus pour voir les résultats.")
         st.stop()
 
     fx_series: Optional[pd.Series] = None
     if params.convert_usd_to_eur:
-        with st.spinner("Synchronisation de la parité historique EUR/USD (EURUSD=X)..."):
-            fx_series = fetch_eurusd_fx_series(params.start_date, params.end_date)
+        fx_series = fetch_eurusd_fx_series(params.start_date, params.end_date)
 
     results: List[AssetBacktestResult] = []
-    errors: List[str] = []
-
-    with st.spinner("Téléchargement des séries temporelles et exécution des calculs vectorisés..."):
+    with st.spinner("Chargement des cours de bourse en temps réel..."):
         if uploaded_csv is not None:
-            csv_series, csv_curr, csv_err = parse_custom_csv(
-                uploaded_csv, params.start_date, params.end_date
-            )
-            if csv_err:
-                errors.append(csv_err)
-            elif csv_series is not None:
-                csv_label = f"CSV Personnalisé ({uploaded_csv.name})"
-                res_csv = run_asset_backtest(
-                    asset_label=csv_label,
-                    ticker="CSV_CUSTOM",
-                    raw_price_series=csv_series,
-                    native_currency=csv_curr,
-                    is_bare_index=False,
-                    params=params,
-                    fx_eurusd_series=fx_series,
-                )
-                results.append(res_csv)
+            cs, cc, ce = parse_custom_csv(uploaded_csv, params.start_date, params.end_date)
+            if ce:
+                st.error(ce)
+            elif cs is not None:
+                results.append(run_asset_backtest(f"CSV ({uploaded_csv.name})", "CSV", cs, cc, False, params, fx_series))
 
-        for label, ticker, default_curr, is_bare in assets_to_fetch:
-            s_price, detected_curr, err = fetch_yahoo_series(
-                ticker, params.start_date, params.end_date
-            )
-            if err or s_price is None:
-                errors.append(err or f"Erreur inconnue sur {ticker}")
+        for lbl, tck, d_curr, is_b in assets_to_fetch:
+            sp, det_c, err = fetch_yahoo_series(tck, params.start_date, params.end_date)
+            if err or sp is None:
+                st.warning(err or f"Données indisponibles pour {tck}")
                 continue
-
-            eff_curr = default_curr if default_curr == "EUR" else detected_curr
-            res = run_asset_backtest(
-                asset_label=label,
-                ticker=ticker,
-                raw_price_series=s_price,
-                native_currency=eff_curr,
-                is_bare_index=is_bare,
-                params=params,
-                fx_eurusd_series=fx_series,
+            results.append(
+                run_asset_backtest(lbl, tck, sp, "EUR" if d_curr == "EUR" else det_c, is_b, params, fx_series)
             )
-            results.append(res)
-
-    for e in errors:
-        st.error(e)
 
     if not results:
-        st.error("Aucun actif n'a pu être chargé sur la période demandée. Vérifiez vos tickers ou votre connexion.")
+        st.error("Aucune donnée disponible sur cette période.")
         st.stop()
 
+    # Sélecteur d'actif principal sous forme de pilules cliquables ou menu déroulant
     if len(results) > 1:
-        selected_primary_label = st.selectbox(
-            "🎯 Actif principal analysé en détail (Onglets 1, 2 et 4) :",
+        selected_label = st.selectbox(
+            "🔍 Afficher le zoom détaillé pour :",
             options=[r.asset_label for r in results],
             index=0,
         )
-        primary_res = next(r for r in results if r.asset_label == selected_primary_label)
+        primary_res = next(r for r in results if r.asset_label == selected_label)
     else:
         primary_res = results[0]
 
     m_dca = primary_res.dca_metrics
     m_ls = primary_res.lump_sum_metrics
+    df = primary_res.daily_df
 
+    # --- 1. HERO CARD (LE RÉSULTAT EN UN COUP D'ŒIL) ---
+    badge_class = "hero-badge-pos" if m_dca.net_pnl >= 0 else "hero-badge-neg"
+    multiplier = m_dca.final_net_value / m_dca.total_invested if m_dca.total_invested > 0 else 1.0
+
+    st.markdown(
+        f"""
+        <div class="hero-card">
+            <div class="hero-label">Capital Final Net en poche ({primary_res.asset_label})</div>
+            <div class="hero-value">{m_dca.final_net_value:,.0f} €</div>
+            <div class="{badge_class}">
+                {m_dca.net_pnl:+,.0f} € de gain net ({m_dca.net_return_pct * 100:+.1f} % | x{multiplier:.2f})
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --- 2. GRILLE 2x2 ULTRA LISIBLE SUR MOBILE ---
+    st.markdown(
+        f"""
+        <div class="kpi-grid">
+            <div class="kpi-box">
+                <div class="kpi-title">💰 Total sorti de votre poche</div>
+                <div class="kpi-num">{m_dca.total_invested:,.0f} €</div>
+                <div class="kpi-sub">{m_dca.num_orders} versements effectués</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-title">🚀 Rendement Annuel Réel (TRI)</div>
+                <div class="kpi-num">{m_dca.xirr * 100:.2f} % / an</div>
+                <div class="kpi-sub">Net de frais et d'impôts</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-title">🛒 Pouvoir d'achat réel (Inflation déduite)</div>
+                <div class="kpi-num">{m_dca.final_real_net_value:,.0f} €</div>
+                <div class="kpi-sub">En euros constants d'aujourd'hui</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-title">📉 Pire baisse traversée (Krach)</div>
+                <div class="kpi-num" style="color:#F87171;">{m_dca.max_drawdown * 100:.1f} %</div>
+                <div class="kpi-sub">Depuis le plus haut atteint</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --- 3. PHRASE D'EXPLICATION EN FRANÇAIS CLAIR ---
+    start_str = df.index[0].strftime("%m/%Y")
+    end_str = df.index[-1].strftime("%m/%Y")
+    st.markdown(
+        f"""
+        <div class="insight-box">
+            💡 <b>En clair :</b> En démarrant avec <b>{params.initial_capital:,.0f} €</b> en {start_str} puis en ajoutant
+            <b>{params.dca_amount:,.0f} €</b> ({params.dca_frequency.lower()}), vous avez versé au total <b>{m_dca.total_invested:,.0f} €</b>.
+            Les intérêts composés ont généré <b>{m_dca.gross_pnl:+,.0f} €</b> de gains bruts (soit <b>{m_dca.net_pnl:+,.0f} €</b> nets après fiscalité {params.tax_regime_name.split('(')[0]}).
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # --- 4. ONGLETS SIMPLIFIÉS ---
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            "📈 1. Vue d'ensemble & Performance",
-            "🛡️ 2. Analyse du Risque & PRU",
-            "⚔️ 3. Comparateur Multi-Indices & DCA vs Lump Sum",
-            "🗂️ 4. Données Annuelles & Export",
+            "📈 Évolution",
+            "⚔️ Comparateur",
+            "🔮 Futur (+10/20 ans)",
+            "📅 Bilans & Détails",
         ]
     )
 
+    # ONGLET 1 : COURBE PRINCIPALE
     with tab1:
-        st.subheader(f"Synthèse de Performance — {primary_res.asset_label}")
-        eff_start_str = primary_res.daily_df.index[0].strftime("%d/%m/%Y")
-        eff_end_str = primary_res.daily_df.index[-1].strftime("%d/%m/%Y")
-        st.caption(
-            f"Période effective cotée : du **{eff_start_str}** au **{eff_end_str}** "
-            f"({m_dca.num_orders} ordres exécutés | Fiscalité : {params.tax_regime_name})"
+        fig1 = go.Figure()
+        fig1.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["Cum_Invested"],
+                name="Argent versé",
+                line=dict(color="#94A3B8", width=2, shape="hv"),
+                fill="tozeroy",
+                fillcolor="rgba(148, 163, 184, 0.15)",
+                hovertemplate="%{y:,.0f} €<extra>Argent versé</extra>",
+            )
         )
+        fig1.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["Portfolio_Gross_Value"],
+                name="Valeur du portefeuille",
+                line=dict(color="#38BDF8", width=3),
+                fill="tonexty",
+                fillcolor="rgba(56, 189, 248, 0.15)",
+                hovertemplate="%{y:,.0f} €<extra>Portefeuille</extra>",
+            )
+        )
+        fig1.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["Portfolio_Real_Gross_Value"],
+                name="Valeur hors inflation",
+                line=dict(color="#F59E0B", width=2, dash="dot"),
+                hovertemplate="%{y:,.0f} €<extra>Hors inflation</extra>",
+            )
+        )
+        st.plotly_chart(style_mobile_chart(fig1, height=370), use_container_width=True)
 
-        k1, k2, k3, k4, k5, k6 = st.columns(6)
-        k1.metric(
-            label="Capital Total Investi",
-            value=f"{m_dca.total_invested:,.0f} €",
-            delta=f"Frais courtage : {m_dca.total_brokerage_fees:,.0f} €",
-            delta_color="off",
-        )
-        k2.metric(
-            label="Valeur Finale Brute",
-            value=f"{m_dca.final_gross_value:,.0f} €",
-            delta=f"{(m_dca.gross_pnl / m_dca.total_invested) * 100:+.1f} % brut",
-        )
-        k3.metric(
-            label="Valeur Finale Nette",
-            value=f"{m_dca.final_net_value:,.0f} €",
-            delta=f"Impôt : -{m_dca.tax_paid:,.0f} €",
-            delta_color="normal",
-        )
-        k4.metric(
-            label="Plus-Value Nette",
-            value=f"{m_dca.net_pnl:+,.0f} €",
-            delta=f"{m_dca.net_return_pct * 100:+.2f} % net",
-        )
-        k5.metric(
-            label="TRI Annualisé (XIRR)",
-            value=f"{m_dca.xirr * 100:.2f} % / an",
-            delta=f"CAGR Actif : {m_dca.underlying_cagr * 100:.2f} %",
-        )
-        k6.metric(
-            label="Max Drawdown (DCA)",
-            value=f"{m_dca.max_drawdown * 100:.2f} %",
-            delta=f"{m_dca.max_underwater_days} j sous l'eau max",
-            delta_color="inverse",
-        )
+        with st.expander("🔍 Voir l'évolution de votre Prix d'Achat Moyen (PRU) et des Krachs"):
+            st.caption("Lorsque la courbe verte (Prix du marché) passe au-dessus de la courbe orange (votre prix d'achat moyen), vous êtes en plus-value.")
+            fig_pru = go.Figure()
+            fig_pru.add_trace(go.Scatter(x=df.index, y=df["Market_Price"], name="Prix de l'action/ETF", line=dict(color="#10B981", width=2.2)))
+            fig_pru.add_trace(go.Scatter(x=df.index, y=df["PRU"], name="Votre Prix Moyen (PRU)", line=dict(color="#F59E0B", width=2.5)))
+            st.plotly_chart(style_mobile_chart(fig_pru, height=300), use_container_width=True)
 
-        st.plotly_chart(
-            plot_portfolio_overview(primary_res, params),
-            use_container_width=True,
-        )
-
-        c_inf1, c_inf2, c_inf3, c_inf4 = st.columns(4)
-        c_inf1.metric(
-            "Pouvoir d'Achat Net Final (Euros Constants)",
-            f"{m_dca.final_real_net_value:,.0f} €",
-        )
-        c_inf2.metric(
-            "Volatilité Annualisée",
-            f"{m_dca.annualized_volatility * 100:.2f} %",
-        )
-        c_inf3.metric(
-            f"Ratio de Sharpe (Rf = {params.risk_free_rate * 100:.1f}%)",
-            f"{m_dca.sharpe_ratio:.2f}",
-        )
-        c_inf4.metric(
-            f"Ratio de Sortino (Rf = {params.risk_free_rate * 100:.1f}%)",
-            f"{m_dca.sortino_ratio:.2f}",
-        )
-
-        with st.expander("🔮 Projection Probabiliste Future (Simulation Monte Carlo continuant le DCA)", expanded=False):
-            col_mc1, col_mc2 = st.columns([1, 3])
-            with col_mc1:
-                mc_horizon = st.slider(
-                    "Horizon de projection future (Années)",
-                    min_value=3,
-                    max_value=30,
-                    value=10,
-                    step=1,
+            st.caption("Graphique des baisses (Drawdown) : montre de combien % votre portefeuille a reculé lors des crises avant de rebondir.")
+            fig_dd = go.Figure()
+            fig_dd.add_trace(
+                go.Scatter(
+                    x=df.index,
+                    y=df["Drawdown_DCA"] * 100,
+                    name="Baisse depuis le record (%)",
+                    line=dict(color="#F43F5E", width=2),
+                    fill="tozeroy",
+                    fillcolor="rgba(244, 63, 94, 0.2)",
                 )
-                mc_df = run_monte_carlo_projection(primary_res, params, horizon_years=mc_horizon)
-                st.markdown(f"**Résultats projetés à +{mc_horizon} ans :**")
-                st.metric("Capital Cumulé Projeté", f"{mc_df['Cum_Invested'].iloc[-1]:,.0f} €")
-                st.metric("Scénario Médian (P50)", f"{mc_df['P50'].iloc[-1]:,.0f} €")
-                st.metric("Scénario Optimiste (P90)", f"{mc_df['P90'].iloc[-1]:,.0f} €")
-                st.metric("Scénario Prudent (P10)", f"{mc_df['P10'].iloc[-1]:,.0f} €")
-            with col_mc2:
-                st.plotly_chart(
-                    plot_monte_carlo_cone(mc_df, primary_res.asset_label),
-                    use_container_width=True,
-                )
+            )
+            st.plotly_chart(style_mobile_chart(fig_dd, height=260), use_container_width=True)
 
+    # ONGLET 2 : COMPARATEUR MULTI-ACTIFS & DCA VS LUMP SUM
     with tab2:
-        st.subheader(f"🛡️ Analyse Psychologique du Risque (Drawdown) & Lissage du PRU — {primary_res.asset_label}")
-
-        r1, r2, r3, r4 = st.columns(4)
-        r1.metric("PRU Final Moyen Pondéré", f"{m_dca.final_pru:,.2f} €")
-        r2.metric(
-            "Prix de Marché Final",
-            f"{m_dca.final_market_price:,.2f} €",
-            delta=f"{((m_dca.final_market_price / m_dca.final_pru) - 1.0) * 100:+.2f} % vs PRU",
-        )
-        r3.metric("Nombre Total de Parts", f"{m_dca.total_shares:,.4f}")
-        r4.metric("Plus longue période Underwater", f"{m_dca.max_underwater_days} jours")
-
-        st.plotly_chart(
-            plot_underwater_drawdown(primary_res),
-            use_container_width=True,
-        )
-
-        st.plotly_chart(
-            plot_market_price_vs_pru(primary_res),
-            use_container_width=True,
-        )
-
-    with tab3:
-        st.subheader("⚔️ Comparaison Multi-Actifs & Duel DCA vs Lump Sum")
-
-        st.plotly_chart(
-            plot_multi_asset_comparison(results),
-            use_container_width=True,
-        )
-
-        comp_rows = []
-        for r in results:
-            dm = r.dca_metrics
-            lm = r.lump_sum_metrics
-            comp_rows.append(
-                {
-                    "Actif": r.asset_label,
-                    "Ticker": r.ticker,
-                    "Capital Versé (€)": round(dm.total_invested, 0),
-                    "Valeur Finale Nette DCA (€)": round(dm.final_net_value, 0),
-                    "Plus-Value Nette DCA (€)": round(dm.net_pnl, 0),
-                    "TRI / XIRR DCA (%)": round(dm.xirr * 100, 2),
-                    "Valeur Finale Nette Lump Sum (€)": round(lm.final_net_value, 0),
-                    "TRI Lump Sum (%)": round(lm.xirr * 100, 2),
-                    "CAGR Sous-Jacent (%)": round(dm.underlying_cagr * 100, 2),
-                    "Volatilité (%)": round(dm.annualized_volatility * 100, 2),
-                    "Max Drawdown DCA (%)": round(dm.max_drawdown * 100, 2),
-                    "Sharpe (DCA)": round(dm.sharpe_ratio, 2),
-                    "Sortino (DCA)": round(dm.sortino_ratio, 2),
-                }
+        st.markdown("##### 🏆 Classement des actifs sélectionnés (pour le même effort d'épargne)")
+        fig_comp = go.Figure()
+        fig_comp.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["Cum_Invested"],
+                name="Total versé",
+                line=dict(color="#64748B", width=2, dash="dash", shape="hv"),
             )
-        st.markdown("#### 📋 Tableau Comparatif Multi-Actifs (Net de fiscalité et de frais)")
-        st.dataframe(pd.DataFrame(comp_rows), use_container_width=True, hide_index=True)
+        )
+        for idx, r in enumerate(results):
+            fig_comp.add_trace(
+                go.Scatter(
+                    x=r.daily_df.index,
+                    y=r.daily_df["Portfolio_Gross_Value"],
+                    name=f"{r.asset_label.split('(')[0].strip()}",
+                    line=dict(color=COLOR_PALETTE[idx % len(COLOR_PALETTE)], width=2.6),
+                )
+            )
+        st.plotly_chart(style_mobile_chart(fig_comp, height=370), use_container_width=True)
+
+        comp_table = [
+            {
+                "Actif": r.asset_label,
+                "Argent Versé": f"{r.dca_metrics.total_invested:,.0f} €",
+                "Capital Final Net": f"{r.dca_metrics.final_net_value:,.0f} €",
+                "Gain Net": f"{r.dca_metrics.net_pnl:+,.0f} €",
+                "Rendement / an": f"{r.dca_metrics.xirr * 100:.2f} %",
+                "Pire Baisse": f"{r.dca_metrics.max_drawdown * 100:.1f} %",
+            }
+            for r in sorted(results, key=lambda x: x.dca_metrics.final_net_value, reverse=True)
+        ]
+        st.dataframe(pd.DataFrame(comp_table), use_container_width=True, hide_index=True)
 
         st.divider()
-
-        st.markdown(f"#### 🥊 Duel Chiffré & Visuel : DCA vs 100% Lump Sum — **{primary_res.asset_label}**")
+        st.markdown(f"##### 🥊 Et si vous aviez tout investi le 1er jour ? (DCA vs Lump Sum sur {primary_res.asset_label})")
         st.caption(
-            f"Le benchmark **Lump Sum** simule l'investissement immédiat de la totalité des **{m_dca.total_invested:,.0f} €** "
-            f"(capital initial + somme de tous les versements DCA futurs) dès le premier jour du backtest ({eff_start_str})."
+            f"Compare votre épargne progressive (DCA) avec le fait d'investir la totalité des **{m_dca.total_invested:,.0f} €** dès le Jour 1."
         )
+        col_ls1, col_ls2 = st.columns(2)
+        col_ls1.metric("Avec Épargne Progressive (DCA)", f"{m_dca.final_net_value:,.0f} €", f"Pire baisse : {m_dca.max_drawdown * 100:.1f} %", delta_color="off")
+        col_ls2.metric("En mettant tout au Jour 1 (Lump Sum)", f"{m_ls.final_net_value:,.0f} €", f"Pire baisse : {m_ls.max_drawdown * 100:.1f} %", delta_color="off")
 
-        diff_net_val = m_dca.final_net_value - m_ls.final_net_value
-        winner_str = "DCA Gagnant" if diff_net_val >= 0 else "Lump Sum Gagnant"
+        fig_ls = go.Figure()
+        fig_ls.add_trace(go.Scatter(x=df.index, y=df["Portfolio_Gross_Value"], name="Épargne progressive (DCA)", line=dict(color="#38BDF8", width=2.8)))
+        fig_ls.add_trace(go.Scatter(x=df.index, y=df["LumpSum_Gross_Value"], name="Tout au Jour 1 (Lump Sum)", line=dict(color="#A855F7", width=2.5)))
+        st.plotly_chart(style_mobile_chart(fig_ls, height=320), use_container_width=True)
 
-        d1, d2, d3, d4 = st.columns(4)
-        d1.metric(
-            "Valeur Nette Finale — DCA",
-            f"{m_dca.final_net_value:,.0f} €",
-            delta=f"TRI (XIRR) : {m_dca.xirr * 100:.2f} %/an",
-        )
-        d2.metric(
-            "Valeur Nette Finale — Lump Sum",
-            f"{m_ls.final_net_value:,.0f} €",
-            delta=f"TRI (CAGR Net) : {m_ls.xirr * 100:.2f} %/an",
-        )
-        d3.metric(
-            "Écart Net (DCA - Lump Sum)",
-            f"{diff_net_val:+,.0f} €",
-            delta=winner_str,
-            delta_color="normal" if diff_net_val >= 0 else "inverse",
-        )
-        d4.metric(
-            "Réduction du Max Drawdown via DCA",
-            f"{(m_dca.max_drawdown - m_ls.max_drawdown) * 100:+.2f} pts",
-            delta=f"DCA: {m_dca.max_drawdown * 100:.1f}% vs LS: {m_ls.max_drawdown * 100:.1f}%",
-            delta_color="normal",
-        )
+    # ONGLET 3 : PROJECTION DANS LE FUTUR (MONTE CARLO)
+    with tab3:
+        st.markdown(f"##### 🔮 Combien aurez-vous demain en continuant sur {primary_res.asset_label} ?")
+        st.caption("Simulation de 500 scénarios futurs basés sur le rythme historique de cet actif en poursuivant votre épargne.")
+        hz = st.slider("Choisissez le nombre d'années supplémentaires :", min_value=3, max_value=30, value=10)
+        mc_df = run_monte_carlo_projection(primary_res, params, hz)
 
-        st.plotly_chart(
-            plot_dca_vs_lumpsum(primary_res),
-            use_container_width=True,
-        )
+        mc1, mc2, mc3 = st.columns(3)
+        mc1.metric("Scénario Prudent", f"{mc_df['P10'].iloc[-1]:,.0f} €", "Marché difficile", delta_color="off")
+        mc2.metric("Scénario Médian", f"{mc_df['P50'].iloc[-1]:,.0f} €", f"Dans +{hz} ans", delta_color="normal")
+        mc3.metric("Scénario Optimiste", f"{mc_df['P90'].iloc[-1]:,.0f} €", "Marché porteur", delta_color="normal")
 
+        fig_mc = go.Figure()
+        fig_mc.add_trace(go.Scatter(x=mc_df.index, y=mc_df["P90"], name="Scénario Optimiste", line=dict(color="#10B981", width=1.5)))
+        fig_mc.add_trace(
+            go.Scatter(
+                x=mc_df.index,
+                y=mc_df["P10"],
+                name="Scénario Prudent",
+                line=dict(color="#F43F5E", width=1.5),
+                fill="tonexty",
+                fillcolor="rgba(56, 189, 248, 0.12)",
+            )
+        )
+        fig_mc.add_trace(go.Scatter(x=mc_df.index, y=mc_df["P50"], name="Trajectoire Centrale", line=dict(color="#38BDF8", width=3)))
+        fig_mc.add_trace(go.Scatter(x=mc_df.index, y=mc_df["Cum_Invested"], name="Total versé", line=dict(color="#94A3B8", width=2, dash="dash")))
+        st.plotly_chart(style_mobile_chart(fig_mc, height=350), use_container_width=True)
+
+    # ONGLET 4 : BILAN ANNÉE PAR ANNÉE & STATISTIQUES EXPERTES
     with tab4:
-        st.subheader(f"📅 Bilan Annuel Détaillé & Export CSV — {primary_res.asset_label}")
+        st.markdown("##### 📅 Récapitulatif Année par Année")
+        ann_df = build_annual_summary_table(df)
+        st.dataframe(ann_df, use_container_width=True, hide_index=True)
 
-        annual_df = build_annual_summary_table(primary_res.daily_df)
-        st.dataframe(
-            annual_df.style.format(
-                {
-                    "Versements de l'année (€)": "{:,.2f} €",
-                    "Cumul Versé (€)": "{:,.2f} €",
-                    "Valeur Fin d'Année (€)": "{:,.2f} €",
-                    "Gain / Perte de l'année (€)": "{:+,.2f} €",
-                    "Performance Annuelle (%)": "{:+.2f} %",
-                    "Plus/Moins-Value Latente (€)": "{:+,.2f} €",
-                    "Plus/Moins-Value Latente (%)": "{:+.2f} %",
-                    "PRU Fin d'Année (€)": "{:,.2f} €",
-                    "Prix Marché Fin d'Année (€)": "{:,.2f} €",
-                }
-            ),
+        with st.expander("🤓 Statistiques Quantitatives Expertes (Sharpe, Sortino, Volatilité)"):
+            s1, s2, s3, s4 = st.columns(4)
+            s1.metric("Volatilité Annuelle", f"{m_dca.annualized_volatility * 100:.2f} %")
+            s2.metric("Ratio de Sharpe", f"{m_dca.sharpe_ratio:.2f}")
+            s3.metric("Ratio de Sortino", f"{m_dca.sortino_ratio:.2f}")
+            s4.metric("Frais de courtage cumulés", f"{m_dca.total_brokerage_fees:,.0f} €")
+
+        ce1, ce2 = st.columns(2)
+        ce1.download_button(
+            "📥 Télécharger l'historique complet (CSV)",
+            df.to_csv(index=True).encode("utf-8"),
+            f"portefeuille_{primary_res.ticker}.csv",
+            "text/csv",
             use_container_width=True,
-            hide_index=True,
         )
-
-        st.divider()
-        st.markdown("#### 💾 Export des Données Quotidiennes et de l'Historique des Transactions")
-
-        col_exp1, col_exp2, col_exp3 = st.columns(3)
-
-        daily_csv_bytes = primary_res.daily_df.to_csv(index=True).encode("utf-8")
-        with col_exp1:
-            st.download_button(
-                label="📥 Télécharger la Valorisation Quotidienne (CSV)",
-                data=daily_csv_bytes,
-                file_name=f"valorisation_quotidienne_{primary_res.ticker}_{params.start_date}_{params.end_date}.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
-
-        tx_df = primary_res.daily_df[primary_res.daily_df["Gross_Contribution"] > 0][
-            [
-                "Market_Price",
-                "Gross_Contribution",
-                "Brokerage_Fee",
-                "Net_Contribution",
-                "Shares_Bought",
-                "Cum_Shares",
-                "PRU",
-                "Cum_Invested",
-                "Portfolio_Gross_Value",
-            ]
-        ].copy()
-        tx_csv_bytes = tx_df.to_csv(index=True).encode("utf-8")
-        with col_exp2:
-            st.download_button(
-                label="📥 Télécharger le Journal des Ordres DCA (CSV)",
-                data=tx_csv_bytes,
-                file_name=f"transactions_dca_{primary_res.ticker}_{params.start_date}_{params.end_date}.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
-
-        annual_csv_bytes = annual_df.to_csv(index=False).encode("utf-8")
-        with col_exp3:
-            st.download_button(
-                label="📥 Télécharger le Bilan Annuel (CSV)",
-                data=annual_csv_bytes,
-                file_name=f"bilan_annuel_{primary_res.ticker}_{params.start_date}_{params.end_date}.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
+        ce2.download_button(
+            "📥 Télécharger le bilan annuel (CSV)",
+            ann_df.to_csv(index=False).encode("utf-8"),
+            f"bilan_annuel_{primary_res.ticker}.csv",
+            "text/csv",
+            use_container_width=True,
+        )
 
 
 if __name__ == "__main__":
