@@ -1,9 +1,3 @@
-st.set_page_config(
-    page_title="Aura Wealth | Simulateur Bourse",
-    page_icon="logo.png",  # <-- Nom exact de ton fichier sur GitHub
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
 from __future__ import annotations
 
 import io
@@ -24,7 +18,7 @@ import yfinance as yf
 
 st.set_page_config(
     page_title="Aura Wealth | Simulateur Bourse",
-    page_icon="✨",
+    page_icon="logo.png",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
