@@ -13,7 +13,7 @@ import streamlit as st
 import yfinance as yf
 
 # ==============================================================================
-# 1. CONFIGURATION & DESIGN SYSTEM "WEALTH PRO" (CSS PREMIUM)
+# 1. CONFIGURATION & DESIGN SYSTEM "WEALTH PRO" (CONTRASTE HAUTE LISIBILITÉ)
 # ==============================================================================
 
 st.set_page_config(
@@ -30,12 +30,37 @@ st.markdown(
 
     html, body, [class*="css"] {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        color: #F8FAFC !important;
     }
 
     /* Fond global profond type Finary / Revolut Ultra */
     .stApp {
         background: radial-gradient(circle at 50% 0%, #131C38 0%, #070A14 60%, #05070E 100%) !important;
-        color: #F8FAFC;
+        color: #F8FAFC !important;
+    }
+
+    /* Forcer tous les labels, textes secondaires et captions Streamlit en blanc/argent très lisible */
+    label, .stWidgetLabel, [data-testid="stWidgetLabel"] p, [data-testid="stMarkdownContainer"] p,
+    [data-testid="stCaptionContainer"], .stCaption, small {
+        color: #E2E8F0 !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stMetricLabel"] p, [data-testid="stMetricLabel"] {
+        color: #E2E8F0 !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #FFFFFF !important;
+    }
+    [data-testid="stMetricDelta"] {
+        color: #CBD5E1 !important;
+    }
+
+    /* Titres des menus déroulants (Expanders) bien visibles */
+    [data-testid="stExpander"] summary p, [data-testid="stExpander"] summary {
+        color: #F8FAFC !important;
+        font-weight: 600 !important;
     }
 
     /* Masquer le header et footer Streamlit par défaut pour un look App Native */
@@ -60,15 +85,15 @@ st.markdown(
     .brand-title {
         font-size: 1.35rem;
         font-weight: 800;
-        background: linear-gradient(90deg, #FFFFFF 0%, #94A3B8 100%);
+        background: linear-gradient(90deg, #FFFFFF 0%, #E2E8F0 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         letter-spacing: -0.02em;
     }
     .brand-badge {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(168, 85, 247, 0.25) 100%);
-        border: 1px solid rgba(168, 85, 247, 0.45);
-        color: #E9D5FF;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.30) 0%, rgba(168, 85, 247, 0.30) 100%);
+        border: 1px solid rgba(168, 85, 247, 0.55);
+        color: #F3E8FF;
         font-size: 0.72rem;
         font-weight: 700;
         padding: 4px 10px;
@@ -79,11 +104,11 @@ st.markdown(
 
     /* Carte Hero Principale (Patrimoine Net) */
     .wealth-hero {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.72) 0%, rgba(15, 23, 42, 0.88) 100%);
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.78) 0%, rgba(15, 23, 42, 0.92) 100%);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.10);
-        border-top: 1px solid rgba(56, 189, 248, 0.40);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-top: 1px solid rgba(56, 189, 248, 0.50);
         border-radius: 24px;
         padding: 26px 22px 22px 22px;
         margin-top: 12px;
@@ -91,8 +116,8 @@ st.markdown(
         box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.65), 0 0 30px -10px rgba(56, 189, 248, 0.15);
     }
     .wealth-eyebrow {
-        color: #94A3B8;
-        font-size: 0.80rem;
+        color: #E2E8F0;
+        font-size: 0.82rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -113,27 +138,27 @@ st.markdown(
         margin-bottom: 20px;
     }
     .pill-gain {
-        background: rgba(16, 185, 129, 0.16);
-        border: 1px solid rgba(16, 185, 129, 0.35);
-        color: #34D399;
+        background: rgba(16, 185, 129, 0.20);
+        border: 1px solid rgba(16, 185, 129, 0.45);
+        color: #6EE7B7;
         font-weight: 700;
         font-size: 0.88rem;
         padding: 5px 13px;
         border-radius: 999px;
     }
     .pill-loss {
-        background: rgba(244, 63, 94, 0.16);
-        border: 1px solid rgba(244, 63, 94, 0.35);
-        color: #FB7185;
+        background: rgba(244, 63, 94, 0.20);
+        border: 1px solid rgba(244, 63, 94, 0.45);
+        color: #FDA4AF;
         font-weight: 700;
         font-size: 0.88rem;
         padding: 5px 13px;
         border-radius: 999px;
     }
     .pill-xirr {
-        background: rgba(56, 189, 248, 0.14);
-        border: 1px solid rgba(56, 189, 248, 0.30);
-        color: #38BDF8;
+        background: rgba(56, 189, 248, 0.18);
+        border: 1px solid rgba(56, 189, 248, 0.40);
+        color: #7DD3FC;
         font-weight: 700;
         font-size: 0.88rem;
         padding: 5px 13px;
@@ -144,21 +169,21 @@ st.markdown(
     .split-bar-labels {
         display: flex;
         justify-content: space-between;
-        font-size: 0.78rem;
-        color: #CBD5E1;
+        font-size: 0.80rem;
+        color: #F1F5F9;
         margin-bottom: 7px;
         font-weight: 600;
     }
     .split-bar-track {
         width: 100%;
         height: 10px;
-        background: rgba(148, 163, 184, 0.20);
+        background: rgba(148, 163, 184, 0.25);
         border-radius: 999px;
         overflow: hidden;
         display: flex;
     }
     .split-bar-capital {
-        background: #64748B;
+        background: #94A3B8;
         height: 100%;
     }
     .split-bar-gains {
@@ -174,34 +199,34 @@ st.markdown(
         margin-bottom: 18px;
     }
     .bento-card {
-        background: rgba(15, 23, 42, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        background: rgba(15, 23, 42, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 18px;
         padding: 15px 16px;
     }
     .bento-label {
-        color: #94A3B8;
-        font-size: 0.76rem;
+        color: #E2E8F0;
+        font-size: 0.78rem;
         font-weight: 600;
         margin-bottom: 4px;
     }
     .bento-val {
-        color: #F8FAFC;
+        color: #FFFFFF;
         font-size: 1.25rem;
         font-weight: 800;
         letter-spacing: -0.02em;
     }
     .bento-sub {
-        color: #64748B;
-        font-size: 0.74rem;
-        margin-top: 2px;
+        color: #CBD5E1;
+        font-size: 0.76rem;
+        margin-top: 3px;
         font-weight: 500;
     }
 
     /* Cartes de classement Podium (Onglet Comparateur) */
     .podium-card {
-        background: rgba(30, 41, 59, 0.48);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(30, 41, 59, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 16px;
         padding: 14px 16px;
         margin-bottom: 10px;
@@ -215,7 +240,7 @@ st.markdown(
     .podium-name {
         font-weight: 700;
         font-size: 0.96rem;
-        color: #F8FAFC;
+        color: #FFFFFF;
     }
     .podium-final {
         font-weight: 800;
@@ -225,33 +250,33 @@ st.markdown(
     .podium-meta {
         display: flex;
         justify-content: space-between;
-        font-size: 0.76rem;
-        color: #94A3B8;
+        font-size: 0.78rem;
+        color: #E2E8F0;
         margin-top: 6px;
     }
 
     /* Conteneur de graphique épuré */
     .chart-header {
         margin-top: 6px;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
     }
     .chart-title {
-        font-size: 1.02rem;
+        font-size: 1.04rem;
         font-weight: 700;
-        color: #F1F5F9;
+        color: #FFFFFF;
     }
     .chart-subtitle {
-        font-size: 0.80rem;
-        color: #94A3B8;
+        font-size: 0.82rem;
+        color: #CBD5E1;
     }
 
     /* Onglets modernes type Segmented Control iOS */
     .stTabs [data-baseweb="tab-list"] {
         gap: 6px;
-        background-color: rgba(15, 23, 42, 0.75);
+        background-color: rgba(15, 23, 42, 0.85);
         padding: 6px;
         border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.12);
     }
     .stTabs [data-baseweb="tab"] {
         height: 38px;
@@ -259,11 +284,12 @@ st.markdown(
         padding-right: 12px;
         border-radius: 10px;
         font-weight: 600;
-        font-size: 0.84rem;
+        font-size: 0.85rem;
+        color: #E2E8F0 !important;
         border: none !important;
     }
     .stTabs [aria-selected="true"] {
-        background: rgba(56, 189, 248, 0.18) !important;
+        background: rgba(56, 189, 248, 0.22) !important;
         color: #38BDF8 !important;
     }
     </style>
@@ -288,15 +314,14 @@ ASSET_CATALOG: Dict[str, Tuple[str, str, bool]] = {
 }
 
 COLOR_PALETTE: List[str] = [
-    "#00F5D4",  # Menthe néon / Turquoise Finary
-    "#38BDF8",  # Bleu ciel lumineux
-    "#A855F7",  # Violet électrique
-    "#F59E0B",  # Or / Ambre
-    "#EC4899",  # Rose vif
-    "#3B82F6",  # Bleu roi
+    "#00F5D4",
+    "#38BDF8",
+    "#A855F7",
+    "#F59E0B",
+    "#EC4899",
+    "#3B82F6",
 ]
 
-# Configuration Plotly Mobile : supprime la barre d'outils parasite et verrouille le zoom accidentel au doigt
 PLOTLY_MOBILE_CONFIG = {
     "displayModeBar": False,
     "scrollZoom": False,
@@ -828,15 +853,11 @@ def run_monte_carlo_projection(
 
 
 # ==============================================================================
-# 4. MOTEUR GRAPHIQUE "APPLE STOCKS / FINARY" (ZÉRO BRUIT VISUEL)
+# 4. MOTEUR GRAPHIQUE "APPLE STOCKS / FINARY" (AXES & LÉGENDES HAUTE LISIBILITÉ)
 # ==============================================================================
 
 
 def resample_for_smooth_chart(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Échantillonne intelligemment les séries longues en hebdomadaire pour que les courbes
-    soient ultra-fluides à l'œil nu et instantanées au toucher sur mobile.
-    """
     if len(df) > 900:
         return df.resample("W-FRI").last().dropna(how="all")
     return df
@@ -848,12 +869,13 @@ def format_fintech_chart(fig: go.Figure, height: int = 330, y_suffix: str = " �
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         height=height,
-        margin=dict(l=0, r=6, t=26, b=6),
+        margin=dict(l=0, r=6, t=28, b=6),
         hovermode="x unified",
         hoverlabel=dict(
             bgcolor="#0F172A",
-            bordercolor="rgba(56, 189, 248, 0.4)",
-            font_size=12,
+            bordercolor="rgba(56, 189, 248, 0.5)",
+            font_size=12.5,
+            font_color="#FFFFFF",
             font_family="Plus Jakarta Sans, sans-serif",
         ),
         legend=dict(
@@ -862,47 +884,42 @@ def format_fintech_chart(fig: go.Figure, height: int = 330, y_suffix: str = " �
             y=1.02,
             xanchor="left",
             x=0.0,
-            font=dict(size=11.5, color="#CBD5E1"),
+            font=dict(size=12, color="#F8FAFC"),
             bgcolor="rgba(0,0,0,0)",
         ),
         xaxis=dict(
             showgrid=False,
             zeroline=False,
             fixedrange=True,
-            tickfont=dict(color="#64748B", size=11),
+            tickfont=dict(color="#CBD5E1", size=11.5),
             showspikes=True,
             spikemode="across",
             spikesnap="cursor",
-            spikecolor="rgba(148, 163, 184, 0.35)",
+            spikecolor="rgba(226, 232, 240, 0.45)",
             spikethickness=1,
             spikedash="dot",
         ),
         yaxis=dict(
             showgrid=True,
-            gridcolor="rgba(148, 163, 184, 0.08)",
+            gridcolor="rgba(148, 163, 184, 0.14)",
             zeroline=False,
             fixedrange=True,
             side="right",
             tickformat=",.0f",
             ticksuffix=y_suffix,
-            tickfont=dict(color="#64748B", size=11),
+            tickfont=dict(color="#CBD5E1", size=11.5),
         ),
     )
     return fig
 
 
 def add_glow_endpoint(fig: go.Figure, x_val: pd.Timestamp, y_val: float, color: str) -> None:
-    """Ajoute un point lumineux type Apple Stocks à l'extrémité droite de la courbe."""
     fig.add_trace(
         go.Scatter(
             x=[x_val],
             y=[y_val],
             mode="markers",
-            marker=dict(
-                size=14,
-                color=color,
-                opacity=0.28,
-            ),
+            marker=dict(size=14, color=color, opacity=0.28),
             showlegend=False,
             hoverinfo="skip",
         )
@@ -912,11 +929,7 @@ def add_glow_endpoint(fig: go.Figure, x_val: pd.Timestamp, y_val: float, color: 
             x=[x_val],
             y=[y_val],
             mode="markers",
-            marker=dict(
-                size=7,
-                color=color,
-                line=dict(width=2, color="#FFFFFF"),
-            ),
+            marker=dict(size=7, color=color, line=dict(width=2, color="#FFFFFF")),
             showlegend=False,
             hoverinfo="skip",
         )
@@ -1108,7 +1121,6 @@ def main() -> None:
     df = primary_res.daily_df
     plot_df = resample_for_smooth_chart(df)
 
-    # Calcul de la répartition Capital vs Gains pour la jauge visuelle
     cap_share_pct = (
         min(100.0, max(5.0, (m_dca.total_invested / m_dca.final_net_value) * 100.0))
         if m_dca.final_net_value > m_dca.total_invested
@@ -1131,7 +1143,7 @@ def main() -> None:
             </div>
             <div class="split-bar-labels">
                 <span>💳 Vos versements : {m_dca.total_invested:,.0f} € ({cap_share_pct:.0f}%)</span>
-                <span style="color:#34D399;">✨ Intérêts nets : {max(0.0, m_dca.net_pnl):,.0f} € ({gains_share_pct:.0f}%)</span>
+                <span style="color:#6EE7B7;">✨ Intérêts nets : {max(0.0, m_dca.net_pnl):,.0f} € ({gains_share_pct:.0f}%)</span>
             </div>
             <div class="split-bar-track">
                 <div class="split-bar-capital" style="width: {cap_share_pct:.1f}%;"></div>
@@ -1163,7 +1175,7 @@ def main() -> None:
             </div>
             <div class="bento-card">
                 <div class="bento-label">Plus forte secousse</div>
-                <div class="bento-val" style="color:#FB7185;">{m_dca.max_drawdown * 100:.1f} %</div>
+                <div class="bento-val" style="color:#FDA4AF;">{m_dca.max_drawdown * 100:.1f} %</div>
                 <div class="bento-sub">Baisse max traversée</div>
             </div>
         </div>
@@ -1182,7 +1194,7 @@ def main() -> None:
     )
 
     # ==========================================================================
-    # ONGLET 1 : TRAJECTOIRE ÉPURÉE (STYLE FINARY / APPLE STOCKS)
+    # ONGLET 1 : TRAJECTOIRE ÉPURÉE
     # ==========================================================================
     with tab1:
         col_hdr, col_tog = st.columns([2, 1])
@@ -1201,19 +1213,17 @@ def main() -> None:
 
         fig1 = go.Figure()
 
-        # Zone grise discrète pour le cumul des versements
         fig1.add_trace(
             go.Scatter(
                 x=plot_df.index,
                 y=plot_df["Cum_Invested"],
                 name="Total versé",
                 mode="lines",
-                line=dict(color="rgba(148, 163, 184, 0.55)", width=1.8, dash="dot"),
+                line=dict(color="rgba(226, 232, 240, 0.70)", width=2.0, dash="dot"),
                 hovertemplate="<b>Versé :</b> %{y:,.0f} €<extra></extra>",
             )
         )
 
-        # Courbe principale lumineuse avec dégradé doux
         fig1.add_trace(
             go.Scatter(
                 x=plot_df.index,
@@ -1234,7 +1244,7 @@ def main() -> None:
                     y=plot_df["Portfolio_Real_Gross_Value"],
                     name="Pouvoir d'achat réel",
                     mode="lines",
-                    line=dict(color="#F59E0B", width=2.0, shape="spline"),
+                    line=dict(color="#F59E0B", width=2.2, shape="spline"),
                     hovertemplate="<b>Hors inflation :</b> %{y:,.0f} €<extra></extra>",
                 )
             )
@@ -1318,9 +1328,9 @@ def main() -> None:
                         <div style="width:{bar_w:.1f}%; background:{color}; height:100%; border-radius:999px;"></div>
                     </div>
                     <div class="podium-meta">
-                        <span>Gain net : <b style="color:#E2E8F0;">{dm.net_pnl:+,.0f} €</b></span>
-                        <span>Rendement : <b style="color:#38BDF8;">{dm.xirr * 100:.2f} %/an</b></span>
-                        <span>Max Krach : <b style="color:#FB7185;">{dm.max_drawdown * 100:.1f} %</b></span>
+                        <span>Gain net : <b style="color:#FFFFFF;">{dm.net_pnl:+,.0f} €</b></span>
+                        <span>Rendement : <b style="color:#7DD3FC;">{dm.xirr * 100:.2f} %/an</b></span>
+                        <span>Max Krach : <b style="color:#FDA4AF;">{dm.max_drawdown * 100:.1f} %</b></span>
                     </div>
                 </div>
                 """,
@@ -1418,17 +1428,17 @@ def main() -> None:
             <div class="bento-grid" style="grid-template-columns: repeat(3, 1fr); margin-top:8px;">
                 <div class="bento-card">
                     <div class="bento-label">Scénario Prudent</div>
-                    <div class="bento-val" style="font-size:1.1rem; color:#CBD5E1;">{mc_df['P10'].iloc[-1]:,.0f} €</div>
+                    <div class="bento-val" style="font-size:1.1rem; color:#F1F5F9;">{mc_df['P10'].iloc[-1]:,.0f} €</div>
                     <div class="bento-sub">Marché lent</div>
                 </div>
-                <div class="bento-card" style="border-color:rgba(0, 245, 212, 0.4);">
+                <div class="bento-card" style="border-color:rgba(0, 245, 212, 0.5);">
                     <div class="bento-label" style="color:#00F5D4;">Scénario Central</div>
                     <div class="bento-val" style="font-size:1.15rem; color:#00F5D4;">{mc_df['P50'].iloc[-1]:,.0f} €</div>
                     <div class="bento-sub">Dans +{hz} ans</div>
                 </div>
                 <div class="bento-card">
                     <div class="bento-label">Scénario Porteur</div>
-                    <div class="bento-val" style="font-size:1.1rem; color:#34D399;">{mc_df['P90'].iloc[-1]:,.0f} €</div>
+                    <div class="bento-val" style="font-size:1.1rem; color:#6EE7B7;">{mc_df['P90'].iloc[-1]:,.0f} €</div>
                     <div class="bento-sub">Marché haussier</div>
                 </div>
             </div>
@@ -1442,7 +1452,7 @@ def main() -> None:
                 x=mc_df.index,
                 y=mc_df["P90"],
                 name="Marché Porteur",
-                line=dict(color="rgba(16, 185, 129, 0.4)", width=1.2, shape="spline"),
+                line=dict(color="rgba(16, 185, 129, 0.45)", width=1.4, shape="spline"),
                 hovertemplate="<b>Porteur :</b> %{y:,.0f} €<extra></extra>",
             )
         )
@@ -1451,7 +1461,7 @@ def main() -> None:
                 x=mc_df.index,
                 y=mc_df["P10"],
                 name="Marché Prudent",
-                line=dict(color="rgba(244, 63, 94, 0.4)", width=1.2, shape="spline"),
+                line=dict(color="rgba(244, 63, 94, 0.45)", width=1.4, shape="spline"),
                 fill="tonexty",
                 fillcolor="rgba(0, 245, 212, 0.10)",
                 hovertemplate="<b>Prudent :</b> %{y:,.0f} €<extra></extra>",
@@ -1471,7 +1481,7 @@ def main() -> None:
                 x=mc_df.index,
                 y=mc_df["Cum_Invested"],
                 name="Cumul versé",
-                line=dict(color="rgba(148, 163, 184, 0.55)", width=1.8, dash="dot"),
+                line=dict(color="rgba(226, 232, 240, 0.70)", width=2.0, dash="dot"),
                 hovertemplate="<b>Versé :</b> %{y:,.0f} €<extra></extra>",
             )
         )
