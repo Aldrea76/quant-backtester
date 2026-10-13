@@ -3,7 +3,8 @@ st.set_page_config(
     page_icon="logo.png",  # <-- Nom exact de ton fichier sur GitHub
     layout="centered",
     initial_sidebar_state="collapsed",
-)from __future__ import annotations
+)
+from __future__ import annotations
 
 import io
 from dataclasses import dataclass, field
